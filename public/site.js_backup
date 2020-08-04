@@ -1,0 +1,222 @@
+var currentDraggable = null;
+//var canvases = {};
+//var numCanvases = 0;
+//var draggables = {};
+//var numDraggables = 0;
+var dragOffset = null;
+var currentColor = '#000000';
+var mouseDown = false;
+//var selectedColor = '#F6511D';
+var ObjectCollection = {};
+
+function UpdateObject(uid, updates){
+  var obj = ObjectCollection[uid];
+  for(update in updates){
+    var propNode = obj;
+    if(obj.updatable[update]){
+      for(prop of obj.updatable[update]){
+        if(typeof propNode[prop] == 'object'){
+          propNode = propNode[prop];
+        }
+        else{
+          propNode[prop] = updates[update];
+        }
+      }
+    }
+  }
+}
+var ObjectTypes = {
+  Draggable: function(uid){
+    var draggableDiv = document.createElement("div");
+    //draggableDiv.dragID = numDraggables;
+    draggableDiv.updatable = {
+      x: ['style', 'left'],
+      y: ['style', 'top']
+    };
+    //numDraggables++;
+    draggableDiv.className = "draggable";
+    
+    assignInputStartEvent(draggableDiv, function(event){
+      currentDraggable = event.currentTarget;
+      currentDraggable.style.border = '10px ridge ' + playerColor;
+      currentDraggable.style.borderRadius = '25px';
+      dragOffset = {x: event.offsetX, y: event.offsetY};
+      event.preventDefault();
+    });
+    
+    assignInputEndEvent(draggableDiv, function(event){
+      currentDraggable.style.borderStyle = 'hidden';
+      currentDraggable = null;
+    });
+    
+    document.body.appendChild(draggableDiv);
+    //draggables[draggableDiv.dragID] = draggableDiv;
+    return draggableDiv;
+  },
+  HeaderDraggable: function(uid){
+    var draggableDiv = document.createElement("div");
+    //draggableDiv.dragID = numDraggables;
+    draggableDiv.updatable = {
+      x: ['style', 'left'],
+      y: ['style', 'top']
+    };
+    //numDraggables++;
+    draggableDiv.className = "draggable";
+
+    var headerDiv = document.createElement("div");
+    headerDiv.className = "draggableHeader";
+    assignInputStartEvent(headerDiv, function(event){
+      currentDraggable = event.target.parentElement;
+      currentDraggable.style.border = '10px ridge ' + playerColor;
+      currentDraggable.style.borderRadius = '25px';
+      dragOffset = {x: event.offsetX, y: event.offsetY};
+      event.stopPropagation();
+      event.preventDefault();
+    });
+
+    assignInputEndEvent(draggableDiv, function(event){
+      currentDraggable.style.borderStyle = 'hidden';
+      currentDraggable = null;
+    });
+
+    draggableDiv.appendChild(headerDiv);
+    document.body.appendChild(draggableDiv);
+    //draggables[draggableDiv.dragID] = draggableDiv;
+    return draggableDiv;
+  },
+  DrawBoard: function(uid){
+    var drawBoard = ObjectTypes['HeaderDraggable']();
+    //drawBoard.updatable.
+    //drawBoard.canvasID = numCanvases;
+    //numCanvases++;
+    drawBoard.canvas = document.createElement("canvas");
+    //drawBoard.canvas.canvasID = drawBoard.canvasID;
+    drawBoard.canvas.setAttribute('width', 500);
+    drawBoard.canvas.setAttribute('height', 300);
+    drawBoard.appendChild(drawBoard.canvas);
+    drawBoard.context = drawBoard.canvas.getContext("2d");
+    var lastPoint = null;
+    assignInputStartEvent(drawBoard.canvas, function(event){
+      mouseDown = true;
+      var rect = event.target.getBoundingClientRect();
+      lastPoint = {x: event.x - rect.x, y: event.y - rect.y};
+    });
+    assignInputEndEvent(drawBoard.canvas, function(event){
+      mouseDown = false;
+      lastPoint = null;
+    });
+    assignInputMoveEvent(drawBoard.canvas, function(event){
+      if(mouseDown){
+        var x = event.x - event.target.getBoundingClientRect().x;
+        var y = event.y - event.target.getBoundingClientRect().y;
+        var context = event.target.getContext("2d");
+        context.beginPath();
+        context.lineWidth = "5";
+        context.strokeStyle = currentColor;
+        context.moveTo(lastPoint.x, lastPoint.y);
+        context.lineTo(x, y);
+        context.stroke();
+        var lastStroke = {
+          type : "canvasStroke",
+          //canvasID: event.target.canvasID,
+          uid: uid,
+          lineWidth: context.lineWidth,
+          lineColor: context.strokeStyle,
+          start : {x: lastPoint.x, y: lastPoint.y},
+          end : {x: x, y: y}
+          };
+        ws.send(JSON.stringify(lastStroke));
+        lastPoint = {x: x, y: y};
+      }
+    });
+    //canvases[drawBoard.canvasID] = drawBoard.canvas;
+    return drawBoard;
+  },
+  ColorPalette: function(){
+    var colorPal = ObjectTypes['Draggable']();
+    var cpCanvas = document.createElement("canvas");
+    cpCanvas.setAttribute('width', 400);
+    cpCanvas.setAttribute('height', 50);
+    //var colors = ['#F6511D', '#FFB400', '#00A6ED', '#7FB800', '#0D2C54'];
+    var colors = ['#D4CB92', '#395C6B', '#80A4ED', '#BCD3F2', '#F2B7C6'];
+    console.log(colors.length);
+    var ctx = cpCanvas.getContext("2d");
+    for(var i = 0; i < colors.length; i++){
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(i * 400/colors.length, 0, 400/colors.length, 50);
+    }
+    assignInputClickEvent(cpCanvas, function(event){
+      currentColor = colors[Math.floor((event.offsetX/400)*colors.length)];
+    });
+    colorPal.appendChild(cpCanvas);
+    return colorPal;
+  }
+};
+function createObjectRequest(objectType){
+  ws.send(JSON.stringify({type: 'createRequest', objectType: objectType}));
+}
+function deleteObjectRequest(uid){
+  ws.send(JSON.stringify({type: 'deleteRequest', uid: uid}));
+}
+function updateObjectRequest(uid){
+  ws.send(JSON.stringify({type: 'updateRequest', uid: uid}));
+}
+function updateObject(uid, updates){}
+
+function Card(){}
+function CardStack(){}
+
+
+function strokeOnCanvas(uid, lineWidth, lineColor, start, end){
+    var context = ObjectCollection[uid].canvas.getContext("2d");
+    context.beginPath();
+    context.lineWidth = lineWidth;
+    context.strokeStyle = lineColor;
+    context.moveTo(start.x, start.y);
+    context.lineTo(end.x, end.y);
+    context.stroke();
+}
+
+assignInputMoveEvent(window, function(event){
+  if(currentDraggable){
+    currentDraggable.style.left = event.clientX + window.pageXOffset - dragOffset.x + "px";
+    currentDraggable.style.top = event.clientY + window.pageYOffset - dragOffset.y + "px";
+    var dragInfo = {
+      type : "draggableMove",
+      //dragID: currentDraggable.dragID,
+      uid: currentDraggable.uid,
+      left: currentDraggable.style.left,
+      top: currentDraggable.style.top
+    };
+    ws.send(JSON.stringify(dragInfo));
+    
+  }
+  event.preventDefault();
+});
+
+const ws = new WebSocket('ws://192.168.33.202:8080/');
+
+ws.onmessage = function(e) {
+  var data = JSON.parse(e.data);
+  if(data.type == "canvasStroke"){
+    strokeOnCanvas(data.uid, data.lineWidth, data.lineColor, data.start, data.end);
+  }
+  if(data.type == "draggableMove"){
+    ObjectCollection[data.uid].style.left = data.left;
+    ObjectCollection[data.uid].style.top = data.top;
+  }
+  if(data.type == "createObject"){
+    ObjectCollection[data.uid] = ObjectTypes[data.objectType](data.uid);
+    ObjectCollection[data.uid].uid = data.uid;
+    if(data.onJoin){
+      updateObjectRequest(data.uid);
+    }
+  }
+  if(data.type == "deleteObject"){
+    ObjectCollection[data.uid].parentNode.removeChild(ObjectCollection[data.uid]);
+    delete ObjectCollection[data.uid];
+  }
+  if(data.type == "updateObject"){
+    UpdateObject(data.uid, data.updates);
+  }
+};

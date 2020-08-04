@@ -1,0 +1,140 @@
+    /*canvas.drawCard = function(src, x, y){
+      var img = new Image();
+      img.onload = function() {
+        var sizeM = RoomSize.w/FixedRoomSize.w;
+        canvas.getContext("2d").drawImage(img, x, y, CardSize.w, CardSize.h);
+        console.log('Loaded: '+src);
+        canvas.incrementLoaded();
+      }
+      img.src = src;
+    };
+    canvas.drawCanvas = function(cardPaths){
+      canvas.setAttribute('height', CardSize.h * Math.ceil(cardPaths.length / 10));
+      for(var row = 0; row < cardPaths.length / 10; row++){
+        for(var col = 0; col < 10 && row * 10 + col < cardPaths.length; col++){
+          canvas.drawCard(cardPaths[row * 10 + col], col * CardSize.w, row * CardSize.h);
+        }
+      }
+    };*/
+    CardManager: function(obj, startData){
+    var canvas = document.createElement('canvas');
+    Object.assign(canvas, obj);
+    canvas.cardImgs = {};
+    canvas.setAttribute('width', CardSize.w * 10);
+    canvas.imgsLoaded = 0;
+    canvas.incrementLoaded = function(){
+      console.log('Loaded Image.. '+canvas.imgsLoaded);
+      canvas.imgsLoaded += 1;
+      if(canvas.imgsLoaded >= ObjectCollection[canvas.uid].get('cardPaths').length){
+        console.log("Images Loaded!");
+        canvas.imgsLoaded = 0;
+        canvas.onRenderCanvasLoaded();
+      }
+    };
+    canvas.loadCard = function(destination, label, fileType){
+      var img = new Image();
+      img.onload = function() {
+        var sizeM = RoomSize.w/FixedRoomSize.w;
+        canvas.cardImgs[label] = img;
+        img.setAttribute('width', sizeM*CardSize.w);
+        img.setAttribute('height', sizeM*CardSize.h);
+        console.log('Loaded: '+label);
+        canvas.incrementLoaded();
+      }
+      img.src = destination+label+fileType;
+    };
+    canvas.loadCards = function(cardPaths){
+      for(cardLabel of cardPaths.labels){
+        canvas.loadCard(cardPaths.destination, cardLabel, cardPaths.fileType);
+      }
+    };
+    canvas.updateFunctions.push(function(updateData){
+      if('cardPaths' in updateData){
+        canvas.loadCards(updateData.cardPaths.value);
+      }
+    });
+    canvas.onRenderCanvasLoaded = function(){
+      console.log("Render Canvas Loaded!");
+      for(cardUID of ObjectCollection[obj.uid].get('cards')){
+        console.log("Card render canvas loaded, drawing cards...");
+        pullUpdateObjectRequest(cardUID);
+      }
+    };
+    canvas.CreateCard = function(label){
+      createObjectRequest('Card', {
+        parentManager: {value: obj.uid},
+        cardLabel: {value: label}
+        });
+    };
+    canvas.DeleteCard = function(uid){
+    };
+    canvas.CreateDeck = function(){
+    };
+    canvas.DeleteDeck = function(){
+    };
+    if(ObjectCollection[canvas.uid].get('cardPaths').labels.length > 0){
+      canvas.loadCards(ObjectCollection[canvas.uid].get('cardPaths'));
+    }
+    return canvas;
+  },
+  DrawBoard: function(uid, objData){
+    var drawBoard = ObjectTypes['HeaderDraggable'](uid);
+    drawBoard.canvas = document.createElement("canvas");
+    drawBoard.canvas.setAttribute('width', 500);
+    drawBoard.canvas.setAttribute('height', 300);
+    drawBoard.appendChild(drawBoard.canvas);
+    drawBoard.context = drawBoard.canvas.getContext("2d");
+    var lastPoint = null;
+    assignInputStartEvent(drawBoard.canvas, function(event){
+      mouseDown = true;
+      var rect = event.target.getBoundingClientRect();
+      lastPoint = {x: event.x - rect.x, y: event.y - rect.y};
+    });
+    assignInputEndEvent(drawBoard.canvas, function(event){
+      mouseDown = false;
+      lastPoint = null;
+    });
+    assignInputMoveEvent(drawBoard.canvas, function(event){
+      if(mouseDown){
+        var x = event.x - event.target.getBoundingClientRect().x;
+        var y = event.y - event.target.getBoundingClientRect().y;
+        var context = event.target.getContext("2d");
+        context.beginPath();
+        context.lineWidth = "5";
+        context.strokeStyle = currentColor;
+        context.moveTo(lastPoint.x, lastPoint.y);
+        context.lineTo(x, y);
+        context.stroke();
+        var lastStroke = {
+          type : "canvasStroke",
+          uid: uid,
+          lineWidth: context.lineWidth,
+          lineColor: context.strokeStyle,
+          start : {x: lastPoint.x, y: lastPoint.y},
+          end : {x: x, y: y}
+          };
+        ws.send(JSON.stringify(lastStroke));
+        lastPoint = {x: x, y: y};
+      }
+    });
+    return drawBoard;
+  },
+  ColorPalette: function(uid, objData){
+    var colorPal = ObjectTypes['Draggable'](uid);
+    var cpCanvas = document.createElement("canvas");
+    cpCanvas.setAttribute('width', 400);
+    cpCanvas.setAttribute('height', 50);
+    //var colors = ['#F6511D', '#FFB400', '#00A6ED', '#7FB800', '#0D2C54'];
+    var colors = ['#D4CB92', '#395C6B', '#80A4ED', '#BCD3F2', '#F2B7C6'];
+    console.log(colors.length);
+    var ctx = cpCanvas.getContext("2d");
+    for(var i = 0; i < colors.length; i++){
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(i * 400/colors.length, 0, 400/colors.length, 50);
+    }
+    assignInputClickEvent(cpCanvas, function(event){
+      currentColor = colors[Math.floor((event.offsetX/400)*colors.length)];
+    });
+    colorPal.appendChild(cpCanvas);
+    return colorPal;
+  },

@@ -1,0 +1,24 @@
+.draggable {
+  position: absolute;
+  text-align: center;
+}
+
+.draggableHeader {
+  padding: 30px;
+  background-color: #2196F3;
+  color: #fff;
+}
+
+#room {
+  position: relative;
+  background-color: #e7e7e7;
+}
+#stack-menu {
+  position: absolute;
+}
+body {
+  height: 100%;
+}
+html {
+  height: 100%;
+}

@@ -10,12 +10,12 @@ const express = require('express'),
   cookie = require('cookie'),
   fs = require('fs'),
   redis = require('redis'),
-  redisClient = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379'),
-  redisStore = require('connect-redis')(session);
-  nanoid = require('nanoid'),
-  filename = '/var/nodelist',
+  redcli = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379'),
+  redisStore = require('connect-redis')(session),
+  { nanoid } = require('nanoid'),
   app = module.exports = express(),
   SECRET = 'BOYOYOUBETTERCHANGETHISLATER';
+setup();
 
 function setup() {
   app.use(bodyParser.raw());
@@ -26,7 +26,7 @@ function setup() {
     secret: SECRET,
     resave: false,
     saveUninitialized: false,
-    store: new redisStore({'client': redisClient}),
+    store: new redisStore({'client': redcli}),
     cookie: {sameSite: true}
   }));
 
@@ -36,12 +36,18 @@ function setup() {
   app.use(express.static('public'));
 
   app.get('/', function(req, res){
-    res.render('index', {title: 'Hangout Online', quip: 'Together but not!'});
+    if('error' in req.session){
+      res.render('index', {title: 'Virtual Game Night', error: req.session.error});
+      delete req.session.error;
+    }
+    else{
+      res.render('index', {title: 'Virtual Game Night', quip: 'Together but not!'});
+    }
   });
 
   app.get('/join', function(req, res){
     //If we are already in the room, don't join again
-    if('roomID' in req.session){
+    if('roomid' in req.session){
       res.redirect('/app');
     }
     //Without a room in session, this should only be a post request
@@ -51,10 +57,8 @@ function setup() {
   });
 
   app.post('/join', function(req, res){
-    //If room code does not exist, redirect back to index storing error in session
-    //TODO
     //If we are already in the room, don't join again
-    if('roomID' in req.session){
+    if('roomid' in req.session){
         res.redirect('/app');
       }
     //Render the page with any errors that exist
@@ -65,24 +69,47 @@ function setup() {
       }
       else{
         if(req.body.action == 'Create'){
-            var newRoomID = '12345';
-            res.render('join', {title: 'Virtual Game Night: Creating...', roomid: newRoomID});
+            var newRoomID = nanoid(5);
+            //If our new room id collides with an existing one, try again
+            redcli.get('room'+newRoomID, function(err, reply){
+              if(!reply){
+                redcli.set('room'+newRoomID, new Date().getTime());
+                res.render('join', {title: 'Virtual Game Night: Creating...', roomid: newRoomID});
+              }
+              else{
+                res.redirect(307, '/join')
+              }
+            });
         }
         else if(req.body.action == 'Join'){
-            res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.body.roomid});
+          //If room code does not exist, redirect back to index storing error in session
+            redcli.get('room'+newRoomID, function(err, reply){
+              if(!reply){
+                req.session.error = "Room code not found...";
+                res.redirect('/');
+              }
+              else{
+                res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.body.roomid});
+              }
+            });
         }
       }
     }
   });
   
   app.get('/:id([A-Za-z0-9_-]{5})', function(req,res){
-    res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.params.id});
+    if(req.session.roomid){
+      res.render('app_temp', {title: 'Virtual Game Night', displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host')});
+    }
+    else{
+      res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.params.id});
+    }
   });
 
   app.get('/app', function(req, res){
     //If there is a roomID in session, let WS connect
-    if('roomID' in req.session){
-      res.render('app_temp', {title: 'Virtual Game Night', displayName: '???', roomid: req.session.roomID});
+    if('roomid' in req.session){
+      res.redirect('/'+req.session.roomid);
     }
     //Else need to select room
     else{
@@ -91,7 +118,17 @@ function setup() {
   });
 
   app.post('/app', function(req, res){
-    res.render('app_temp', {title: 'Virtual Game Night', displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host')});
+    redcli.get('room'+req.body.roomid, function(err, reply){
+      if(reply){
+        req.session.roomid = req.body.roomid;
+        req.session.displayName = req.body.displayName;
+        res.redirect('/'+req.body.roomid);
+      }
+      else{
+        req.session.error = "Room code not found..."
+        res.redirect('/');
+      }
+    });
     //TODO Sanitize data...
     //Person is in room with name
     /*if(UserList.includes(req.body.displayName)){

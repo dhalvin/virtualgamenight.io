@@ -4,8 +4,7 @@ var cluster = require('cluster'),
 
 var workers = {},
   websockets = {},
-  //count = require('os').cpus().length;
-  count = 4;
+  count = process.env.CORES || require('os').cpus().length;
 
 function spawn(){
   var worker = cluster.fork();

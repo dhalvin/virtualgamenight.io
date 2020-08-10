@@ -26,14 +26,17 @@ if (cluster.isMaster) {
 } else {
   server = app.listen(process.env.PORT || 5000)
   cluster.worker.wsServer = ws.start(server);
-  //listWSConnections();
+  listWSConnections();
 }
 
 function listWSConnections(){
   if(cluster.isWorker){
     console.log('Worker #' + cluster.worker.process.pid + ' has WS connections:');
-    for(connection in ws.connections){
-      console.log(connection + ': ' + ws.connections[connection]);
+    for(room in ws.rooms){
+      console.log('ROOM:\t'+room);
+    for(user in ws.rooms[room]){
+        console.log('\t'+user);
+      }
     }
   }
   setTimeout(listWSConnections, 5000);

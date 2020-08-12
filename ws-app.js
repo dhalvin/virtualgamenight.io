@@ -10,7 +10,6 @@ const WebSocket = require('ws'),
 var wsServer = null;
 const rooms = {};
 module.exports.start = function(server){
-  console.log("Starting WS Server on port " + server.port);
   wsServer =  new WebSocket.Server({server: server});
   setup(wsServer);
   return wsServer;
@@ -18,16 +17,13 @@ module.exports.start = function(server){
 
 function setup(wss){
   module.exports.connections = {};
-  module.exports.connectionCount = 0;
   module.exports.rooms = rooms;
   redsub.on("message", function(channel, message){
     BroadcastToRoom(channel.substring('room'.length), message);
   });
   wss.on("connection", function(socket, req){
     var sid = cookieParser.signedCookie(cookie.parse(req.headers.cookie)['connect.sid'], common.SECRET);
-    //var connID = module.exports.connectionCount;
     module.exports.connections[sid] = socket;
-    module.exports.connectionCount++;
     redcli.get('sess:'+sid, function(err, reply){
       console.log('test: '+sid);
       if(reply){

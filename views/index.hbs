@@ -17,11 +17,11 @@
   </form>
   <h2>Or join an existing one</h2>
   <form action="join" method="post">
-    {{#if error}}
+    {{#each errors}}
     <div class="alert alert-danger" role="alert">
-      {{error}}
+      {{msg}}
     </div>
-    {{/if}}
+    {{/each}}
     <div class="input-group mb-3">
       <div class="input-group-prepend">
       <span class="input-group-text" id="inputGroup-sizing-default">Room Code</span>

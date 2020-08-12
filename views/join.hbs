@@ -7,11 +7,11 @@
   <h2>Joining Room: {{roomid}}</h2>
   <form action="app" method="post">
     <input name="roomid" type="hidden" value="{{roomid}}">
-    {{#if error}}
+    {{#each errors}}
     <div class="alert alert-danger" role="alert">
-      {{error}}
+      {{msg}}
     </div>
-    {{/if}}
+    {{/each}}
   <div class="input-group mb-3">
     <div class="input-group-prepend">
     <span class="input-group-text" id="inputGroup-sizing-default">Display Name</span>

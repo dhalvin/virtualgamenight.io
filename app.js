@@ -8,9 +8,8 @@ var workers = {},
 
 function spawn(){
   var worker = cluster.fork();
-  //console.log('Worker Pid: ' + worker.process.pid);
   workers[worker.process.pid] = worker;
-  console.log('Spawning worker with id ' + worker.id);
+  console.log('Spawning worker with id ' + worker.process.id);
   return worker;
 }
 
@@ -26,7 +25,7 @@ if (cluster.isMaster) {
 } else {
   server = app.listen(process.env.PORT || 5000)
   cluster.worker.wsServer = ws.start(server);
-  listWSConnections();
+  //listWSConnections();
 }
 
 function listWSConnections(){

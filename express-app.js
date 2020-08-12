@@ -12,7 +12,8 @@ const express = require('express'),
   redcli = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379'),
   redisStore = require('connect-redis')(session),
   { nanoid } = require('nanoid'),
-  common = require('./common');
+  validator = require('express-validator'),
+  common = require('./common'),
   app = module.exports = express();
 setup();
 
@@ -35,9 +36,9 @@ function setup() {
   app.use(express.static('public'));
 
   app.get('/', function(req, res){
-    if('error' in req.session){
-      res.render('index', {title: 'Virtual Game Night', error: req.session.error});
-      delete req.session.error;
+    if('errors' in req.session){
+      res.render('index', {title: 'Virtual Game Night', errors: JSON.parse(req.session.errors)});
+      delete req.session.errors;
     }
     else{
       res.render('index', {title: 'Virtual Game Night', quip: 'Together but not!'});
@@ -55,13 +56,15 @@ function setup() {
     }
   });
 
-  app.post('/join', function(req, res){
+  app.post('/join', [
+    validator.check('roomid').trim().isLength({min:1}).withMessage('Cannot be empty...').bail().matches('[A-Za-z0-9_-]{5}').withMessage('Invalid Room Code')
+  ], function(req, res){
     //Render the page with any errors that exist
-    if('error' in req.session){
-      res.render('join', {title: 'Virtual Game Night: Joining...', error: req.session.error});
-      delete req.session.error;
+    if('errors' in req.session){
+      res.render('join', {title: 'Virtual Game Night: Joining...', errors: JSON.parse(req.session.errors)});
+      delete req.session.errors;
     }
-    else{
+    else {
       if(req.body.action == 'Create'){
           var newRoomID = nanoid(5);
           //If our new room id collides with an existing one, try again
@@ -76,16 +79,21 @@ function setup() {
           });
       }
       else if(req.body.action == 'Join'){
+        const errors = validator.validationResult(req);
+        if(!errors.isEmpty()){
+          req.session.errors = JSON.stringify(errors.array());
+          res.redirect('/');
+        }
         //If room code does not exist, redirect back to index storing error in session
-          redcli.get('room'+newRoomID, function(err, reply){
-            if(!reply){
-              req.session.error = "Room code not found...";
-              res.redirect('/');
-            }
-            else{
-              res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.body.roomid});
-            }
-          });
+        redcli.get('room'+newRoomID, function(err, reply){
+          if(!reply){
+            req.session.errors = '[{"msg": "Room code not found..."}]';
+            res.redirect('/');
+          }
+          else{
+            res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.body.roomid});
+          }
+        });
       }
     }
   });
@@ -110,18 +118,29 @@ function setup() {
     }
   });
 
-  app.post('/app', function(req, res){
-    redcli.get('room'+req.body.roomid, function(err, reply){
-      if(reply){
-        req.session.roomid = req.body.roomid;
-        req.session.displayName = req.body.displayName;
-        res.redirect('/'+req.body.roomid);
-      }
-      else{
-        req.session.error = "Room code not found..."
-        res.redirect('/');
-      }
-    });
+  app.post('/app', [
+    validator.check('roomid').trim().isLength({min:1}).withMessage('Room Code Cannot be empty...').bail().matches('[A-Za-z0-9_-]{5}').withMessage('Invalid Room Code'),
+    validator.check('displayName').trim().escape().isLength({min:1}).withMessage('Display Name Cannot be empty...')
+  ], function(req, res){
+    const errors = validator.validationResult(req);
+    if(!errors.isEmpty()){
+      req.session.errors = JSON.stringify(errors.array());
+      res.redirect('/join');
+    }
+    else {
+      redcli.get('room'+req.body.roomid, function(err, reply){
+        if(reply){
+          var roomid = req.body.roomid;
+          req.session.roomid = roomid;
+          req.session.displayName = req.body.displayName;
+          res.redirect('/'+roomid);
+        }
+        else{
+          req.session.errors = '[{"msg": "Room code not found..."}]';
+          res.redirect('/');
+        }
+      });
+    }
     //TODO Sanitize data...
     //Person is in room with name
     /*if(UserList.includes(req.body.displayName)){

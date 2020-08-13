@@ -23,5 +23,6 @@
   <a class="dropdown-item" href="#" id="create-deck">Create New Deck</a>
   <a class="dropdown-item" href="#" id="reset-room">Reset Room</a>
 </div>
-<script src="ClientObjects.js"></script>
-<script src="site.js"></script>
+<script>const ws = new WebSocket("ws://{{serverAddress}}/");</script>
+<script src="javascripts/ClientObjects.js"></script>
+<script src="javascripts/site.js"></script>

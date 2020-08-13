@@ -101,7 +101,7 @@ function setup() {
   
   app.get('/:id([A-Za-z0-9_-]{5})', function(req,res){
     if(req.session.roomid && req.session.roomid === req.params.id){
-      res.render('app_temp', {title: 'Virtual Game Night', displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host')});
+      res.render('app', {title: 'Virtual Game Night', displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host')});
     }
     else{
       res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.params.id});

@@ -5,10 +5,10 @@ const WebSocket = require('ws'),
   redpub = redcli.duplicate(),
   cookie = require('cookie'),
   cookieParser = require('cookie-parser'),
-  flatten = require('flat'),
-  unflatten = require('flat').unflatten,
   { nanoid } = require('nanoid'),
-  common = require('./common');
+  common = require('./common')
+  SyncObjectFactory = require('./SyncableObjects'),
+  ObjectStore = require('./ObjectStore');
 
 var wsServer = null;
 const rooms = {};
@@ -41,6 +41,11 @@ function setup(wss){
 
     socket.on("close", function(){
       onUserDisconnected(user);
+    });
+
+    socket.on("message", function(message){
+      var data = JSON.parse(message);
+      onRequest[data.type](data, user);
     });
   });
 }
@@ -96,4 +101,25 @@ function onUserDisconnected(user){
     }
   });
   delete module.exports.connections[user.sid];
+}
+
+function onCreateRequest(data, user){
+  var uid = data.uid;
+  if(!uid){uid = nanoid(4);}
+  SyncObjectFactory.CreateObject(uid, data.objType, data.objData, function(newObj){
+    ObjectStore.AddObject(user.roomid, newObj);
+    BroadcastToRoom(user.roomid, JSON.stringify({type: "createObject", uid: uid, objType: data.objType, objData: newObj.objData}));
+  });
+}
+
+function onPushUpdateRequest(data, user){}
+function onMoveRequest(data, user){}
+function onPullUpdateRequest(data, user){}
+function onDeleteRequest(data, user){}
+const onRequest = {
+  "moveRequest": onMoveRequest,
+  "pushUpdateRequest": onPushUpdateRequest,
+  "createRequest": onCreateRequest,
+  "deleteRequest": onDeleteRequest,
+  "pullUpdateRequest": onPullUpdateRequest
 }

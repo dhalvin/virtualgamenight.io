@@ -85,8 +85,9 @@ function setup() {
           res.redirect('/');
         }
         //If room code does not exist, redirect back to index storing error in session
-        redcli.get('room'+newRoomID, function(err, reply){
+        redcli.get('room'+req.body.roomid, function(err, reply){
           if(!reply){
+            console.log('test');
             req.session.errors = '[{"msg": "Room code not found..."}]';
             res.redirect('/');
           }
@@ -133,6 +134,9 @@ function setup() {
           var roomid = req.body.roomid;
           req.session.roomid = roomid;
           req.session.displayName = req.body.displayName;
+          if(!req.session.registered && !req.session.userid){
+            req.session.userid = nanoid(6);
+          }
           res.redirect('/'+roomid);
         }
         else{
@@ -141,28 +145,6 @@ function setup() {
         }
       });
     }
-    //TODO Sanitize data...
-    //Person is in room with name
-    /*if(UserList.includes(req.body.displayName)){
-      req.session.error = 'Someone is already using that name in this room!';
-      res.redirect('/');
-    }
-    //Person is returning to room by name
-    else if(req.body.displayName in usersByName){
-      var oldSID = usersByName[req.body.displayName].sid;
-      users[req.session.id] = users[oldSID];
-      delete users[oldSID];
-      req.session.userID = users[req.session.id].id;
-      res.redirect('/app');
-    }
-    //New name provided
-    else{
-      var id = wsServer.getUniqueID();
-      req.session.userID = id;
-      users[req.session.id] = {id: id, sid: req.session.id, displayName: req.body.displayName, playerColor: req.body.playerColor};
-      usersByName[req.body.displayName] = users[req.session.id];
-      res.redirect('/app');
-    }*/
   });
 
   if (!module.parent) {

@@ -5,6 +5,9 @@ const WebSocket = require('ws'),
   redpub = redcli.duplicate(),
   cookie = require('cookie'),
   cookieParser = require('cookie-parser'),
+  flatten = require('flat'),
+  unflatten = require('flat').unflatten,
+  { nanoid } = require('nanoid'),
   common = require('./common');
 
 var wsServer = null;
@@ -23,44 +26,21 @@ function setup(wss){
   });
   wss.on("connection", function(socket, req){
     var sid = cookieParser.signedCookie(cookie.parse(req.headers.cookie)['connect.sid'], common.SECRET);
-    module.exports.connections[sid] = socket;
-    redcli.get('sess:'+sid, function(err, reply){
-      console.log('test: '+sid);
-      if(reply){
-        var session = JSON.parse(reply);
-        console.log("Client: " + session.displayName + " connected to room " + session.roomid);
-        SendMessage(session.roomid, {data: session.displayName + " connected to room."});
-        redsub.subscribe('room'+session.roomid);
-        if(session.roomid in rooms){
-          rooms[session.roomid][sid] = socket;
-        }
-        else{
-          rooms[session.roomid] = {};
-          rooms[session.roomid][sid] = socket;
-        }
-      }
-      if(err){
-        console.log('Error retrieving session for sid: ' + sid);
-        console.log(err);
-      }
-    });
+    const user = {
+      'sid': sid,
+      'socket': socket,
+      'displayName': '',
+      'userid': '',
+      'roomid': ''
+    }
+    onUserConnected(user);
+
     socket.on("error", function(error){
       console.log("Client Error: " + error);
     });
+
     socket.on("close", function(){
-      redcli.get('sess:'+sid, function(err, reply){
-        if(reply){
-          var session = JSON.parse(reply);
-          console.log("Client: " + session.displayName + " disconnected from room " + session.roomid);
-          SendMessage(session.roomid, {data: session.displayName + " disconnected from room."});
-          delete rooms[session.roomid][sid];
-          if(Object.keys(rooms[session.roomid]).length == 0){
-            delete rooms[session.roomid];
-            redsub.unsubscribe('room'+session.roomid);
-          }
-        }
-      });
-      delete module.exports.connections[sid];
+      onUserDisconnected(user);
     });
   });
 }
@@ -68,7 +48,7 @@ function setup(wss){
 //This broadcasts message even to sender. Sender is responsible for ignoring own messages.
 function BroadcastToRoom(roomid, message){
   for(sess in rooms[roomid]){
-    rooms[roomid][sess].send(message);
+    rooms[roomid][sess].socket.send(message);
   }
 }
 
@@ -76,4 +56,44 @@ function SendMessage(roomid, message){
   redpub.publish('room'+roomid, JSON.stringify(message));
 }
 
-function onConnectionClosed(socket){};
+function onUserConnected(user){
+  module.exports.connections[user.sid] = user.socket;
+  redcli.get('sess:'+user.sid, function(err, reply){
+    if(reply){
+      var session = JSON.parse(reply);
+      console.log("Client: " + session.displayName + " connected to room " + session.roomid);
+      SendMessage(session.roomid, {data: session.displayName + " connected to room."});
+      redsub.subscribe('room'+session.roomid);
+      if(session.roomid in rooms){
+        rooms[session.roomid][user.sid] = user;
+      }
+      else{
+        rooms[session.roomid] = {};
+        rooms[session.roomid][user.sid] = user;
+      }
+      user.displayName = session.displayName;
+      user.roomid = session.roomid;
+      user.userid = session.userid;
+    }
+    if(err){
+      console.log('Error retrieving session for sid: ' + user.sid);
+      console.log(err);
+    }
+  });
+}
+
+function onUserDisconnected(user){
+  redcli.get('sess:'+user.sid, function(err, reply){
+    if(reply){
+      var session = JSON.parse(reply);
+      console.log("Client: " + session.displayName + " disconnected from room " + session.roomid);
+      SendMessage(session.roomid, {data: session.displayName + " disconnected from room."});
+      delete rooms[session.roomid][user.sid];
+      if(Object.keys(rooms[session.roomid]).length == 0){
+        delete rooms[session.roomid];
+        redsub.unsubscribe('room'+session.roomid);
+      }
+    }
+  });
+  delete module.exports.connections[user.sid];
+}

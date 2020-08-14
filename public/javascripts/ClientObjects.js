@@ -1,4 +1,3 @@
-const CardManagers = {};
 const InitializeObject = {
   Card: function(obj, startData){
     obj.cardImg = document.createElement('img');
@@ -19,11 +18,11 @@ const InitializeObject = {
         var duration = .1;
         tl.to(obj, {duration: duration, scale: 1.1,  repeat: 1, yoyo: true, ease: 'none', yoyoEase: 'power3'});
         tl.add(function(){
-          if(updateData.faceUp.value){
-            obj.cardImg.src = ObjectCollection[ObjectCollection[obj.uid].get('parentManager')].get('cardPaths').destination + updateData.cardLabel.value + '.svg';
+          if(updateData.faceUp){
+            obj.cardImg.src = '/card/'+ObjectCollection[obj.uid].get('styleName') + '/' + updateData.cardLabel;
           }
           else{
-            obj.cardImg.src = ObjectCollection[ObjectCollection[obj.uid].get('parentManager')].get('cardPaths').destination + 'card_back.svg';
+            obj.cardImg.src = '/card/'+ObjectCollection[obj.uid].get('styleName') + '/card_back';
           }
         }, '<'+duration);
         tl.resume();
@@ -46,7 +45,7 @@ const InitializeObject = {
     //assignInputEndEvent(obj.cardImg, function(event){
     obj.addEventListener("onReleased", function(event){
       if(SelectedObject === obj && !ObjectCollection[obj.uid].get('moving')){
-        pushUpdateObjectRequest(obj.uid, {faceUp : {value: !ObjectCollection[obj.uid].get('faceUp')}, cardLabel: {}}, true);
+        pushUpdateObjectRequest(obj.uid, {faceUp : !ObjectCollection[obj.uid].get('faceUp'), cardLabel: {}}, true);
         if(hoverTween){
           hoverTween.resume();
         }
@@ -66,8 +65,8 @@ const InitializeObject = {
               obj.snapTo(deck);
               var newStackData = {
                 pos: ObjectCollection[obj.uid].objData.pos,
-                cards: {value: [obj.uid]},
-                parentObj: {value: deck.uid}
+                cards: [obj.uid],
+                parentObj: deck.uid
               };
               createObjectRequest('CardStack', newStackData);
             }
@@ -83,7 +82,7 @@ const InitializeObject = {
                 obj.snapTo(card);
                 var newStackData = {
                   pos: ObjectCollection[obj.uid].objData.pos,
-                  cards: {value: [card.uid, obj.uid]}
+                  cards: [card.uid, obj.uid]
                 };
                 createObjectRequest('CardStack', newStackData);
               }
@@ -115,34 +114,10 @@ const InitializeObject = {
       }
     });
     try{
-      obj.cardImg.src = ObjectCollection[ObjectCollection[obj.uid].get('parentManager')].get('cardPaths').destination + 'card_back.svg';
+      obj.cardImg.src = '/cards?style='+ObjectCollection[obj.uid].get('styleName') + '&label=card_back';
     }
-    catch(err){}
+    catch(err){console.log(err);}
     return obj;
-  },
-  CardManager: function(obj, startData){
-    var canvas = document.createElement('canvas');
-    Object.assign(canvas, obj);
-    canvas.updateFunctions.push(function(updateData){
-    });
-    canvas.CreateCard = function(label){
-      createObjectRequest('Card', {
-        parentManager: {value: obj.uid},
-        cardLabel: {value: label}
-        });
-    };
-    canvas.DeleteCard = function(uid){
-    };
-    canvas.CreateDeck = function(pos={x: 300, y: 300}){
-      createObjectRequest('Deck', {parentManager: {value: obj.uid}, pos: {value: pos}});
-    };
-    canvas.DeleteDeck = function(){
-    };
-    CardManagers[startData.styleName.value] = canvas;
-    for(cardUID of ObjectCollection[obj.uid].get('cards')){
-        pullUpdateObjectRequest(cardUID);
-    }
-    return canvas;
   },
   CardStack: function(obj){
     obj.style.cursor = 'default';
@@ -208,10 +183,10 @@ const InitializeObject = {
         ClientObjectCollection[cards[i]].style.zIndex = i;
         ObjectCollection[cards[i]].get('pos').z = i;
         //pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], parentObj: {value: obj.uid}});
-        pushUpdateObjectRequest(card, {parentObj: {value: obj.uid}});
+        pushUpdateObjectRequest(card, {parentObj: obj.uid});
       }
       //pushUpdateObjectRequest(card, {parentObj: {value: obj.uid}});
-      pushUpdateObjectRequest(obj.uid, {cards: {value: cards}});
+      pushUpdateObjectRequest(obj.uid, {cards: cards});
       ArrangeStack(obj, ObjectCollection[obj.uid].get('arrangement'));
     };
     obj.removeCard = function(card){
@@ -224,12 +199,12 @@ const InitializeObject = {
         UnparentClientObject(cardObj);
         ObjectCollection[cardObj.uid].set('parentObj', null);
         //pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], releaseUser: {value: true}});
-        pushUpdateObjectRequest(card, {parentObj: {value: null}, moving: {value: false}, locked: {value: false}, releaseUser: {value: true}}, true);
+        pushUpdateObjectRequest(card, {parentObj: null, moving: false, locked: false, releaseUser: true}, true);
         if(cards.length < 2){
           deleteObjectRequest(obj.uid);
         }
         else{
-          pushUpdateObjectRequest(obj.uid, {cards: {value: cards}});
+          pushUpdateObjectRequest(obj.uid, {cards: cards});
           ArrangeStack(obj, ObjectCollection[obj.uid].get('arrangement'));
         }
       }
@@ -248,7 +223,7 @@ const InitializeObject = {
           UnparentClientObject(cardObj);
           ObjectCollection[cardObj.uid].set('parentObj', null);
           //pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], releaseUser: {value: true}});
-          pushUpdateObjectRequest(card, {parentObj: {value: null}, moving: {value: false}, locked: {value: false}, releaseUser: {value: true}}, true);
+          pushUpdateObjectRequest(card, {parentObj: null, moving: false, locked: false, releaseUser: true}, true);
         }
         else{
           console.log("Tried to remove card from stack that was not in stack");
@@ -258,7 +233,7 @@ const InitializeObject = {
         deleteObjectRequest(obj.uid);
       }
       else{
-        pushUpdateObjectRequest(obj.uid, {cards: {value: cards}});
+        pushUpdateObjectRequest(obj.uid, {cards: cards});
         ArrangeStack(obj, ObjectCollection[obj.uid].get('arrangement'));
       }
     };
@@ -276,11 +251,11 @@ const InitializeObject = {
         ObjectCollection[cardObj.uid].get('pos').z = cardsLen - 1;
         ObjectCollection[cardObj.uid].set('parentObj', obj.uid);
         cardObj.style.zIndex = cardsLen - 1;
-        pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], parentObj: {value: obj.uid}});
+        pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], parentObj: obj.uid});
       }
       //obj.cardSlot.style.zIndex = cardsLen;
       obj.countText.nodeValue = cardsLen;
-      pushUpdateObjectRequest(obj.uid, {cards: {value: cards}});
+      pushUpdateObjectRequest(obj.uid, {cards: cards});
       deleteObjectRequest(stack);
       ArrangeStack(obj, ObjectCollection[obj.uid].get('arrangement'));
     };
@@ -301,46 +276,46 @@ const InitializeObject = {
       if(newCards.length >= 2){
         var newStackData = {
           pos: ObjectCollection[obj.uid].objData.pos,
-          cards: {value: newCards},
-          arrangement: {value: ObjectCollection[obj.uid].get('arrangement')}
+          cards: newCards,
+          arrangement: ObjectCollection[obj.uid].get('arrangement')
         };
         if(parentDeck){
-          newStackData.parentObj = {value: parentDeck};
+          newStackData.parentObj = parentDeck;
         }
         createObjectRequest('CardStack', newStackData);
       }
-      pushUpdateObjectRequest(obj.uid, {cards: {value: cards}});
+      pushUpdateObjectRequest(obj.uid, {cards: cards});
       ArrangeStack(obj, ObjectCollection[obj.uid].get('arrangement'));
     };
     obj.updateFunctions.push(function(updateData){
       if('cards' in updateData){
         var oldCards = ObjectCollection[obj.uid].get('cards');
-        var removedCards = oldCards.filter(function(card){return !updateData.cards.value.includes(card)});
+        var removedCards = oldCards.filter(function(card){return !updateData.cards.includes(card)});
         for(card of removedCards){
           var cardObj =  ClientObjectCollection[card];
           if(obj.contains(cardObj)){
             UnparentClientObject(cardObj);
           }
         }
-        var addedCards = updateData.cards.value.filter(function(card){return !oldCards.includes(card)});
+        var addedCards = updateData.cards.filter(function(card){return !oldCards.includes(card)});
         for(card of addedCards){
           var cardObj =  ClientObjectCollection[card];    
           obj.appendChild(cardObj);
           cardObj.snapTo(obj.cardSlot);
         }
-        for(var i = 0; i < updateData.cards.value.length; i++){
-          ClientObjectCollection[updateData.cards.value[i]].style.zIndex = i;
+        for(var i = 0; i < updateData.cards.length; i++){
+          ClientObjectCollection[updateData.cards[i]].style.zIndex = i;
         }
-        obj.countText.nodeValue = updateData.cards.value.length;
+        obj.countText.nodeValue = updateData.cards.length;
         if('arrangement' in updateData){
-          ArrangeStack(obj, updateData.arrangement.value, updateData.cards.value);
+          ArrangeStack(obj, updateData.arrangement, updateData.cards);
         }
         else{
-          ArrangeStack(obj, ObjectCollection[obj.uid].get('arrangement'), updateData.cards.value);
+          ArrangeStack(obj, ObjectCollection[obj.uid].get('arrangement'), updateData.cards);
         }
       }
       else if('arrangement' in updateData){
-        ArrangeStack(obj, updateData.arrangement.value);
+        ArrangeStack(obj, updateData.arrangement);
       }
     });
     obj.deleteFunctions.push(function(){
@@ -348,7 +323,7 @@ const InitializeObject = {
         if(obj.contains(ClientObjectCollection[card])){
           var cardObj =  ClientObjectCollection[card];
           UnparentClientObject(cardObj);
-          pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], parentObj: {value: null}, moving: {value: false}, locked: {value: false}, releaseUser: {value: true}}, true);
+          pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], parentObj: null, moving: false, locked: false, releaseUser: true}, true);
         }
       }
       var parentObj = ObjectCollection[obj.uid].get('parentObj');
@@ -444,8 +419,8 @@ const InitializeObject = {
     };
     obj.updateFunctions.push(function(updateData){
       if('cardStack' in updateData){
-        if(updateData.cardStack.value){
-          var cardStack = ClientObjectCollection[updateData.cardStack.value];
+        if(updateData.cardStack){
+          var cardStack = ClientObjectCollection[updateData.cardStack];
           obj.appendChild(cardStack);
           cardStack.snapTo(obj);
         }
@@ -460,18 +435,18 @@ const InitializeObject = {
       var cardStackNode = document.getElementById(cardStack.uid);
       UnparentClientObject(cardStackNode);
       ObjectCollection[obj.uid].set('cardStack', null);
-      pushUpdateObjectRequest(obj.uid, {cardStack: {value: null}});
+      pushUpdateObjectRequest(obj.uid, {cardStack: null});
       ObjectCollection[cardStack.uid].set('parentObj', null);
-      pushUpdateObjectRequest(cardStack.uid, {pos: {value: ObjectCollection[cardStack.uid].get('pos')}, parentObj: {value: null}});
+      pushUpdateObjectRequest(cardStack.uid, {pos: ObjectCollection[cardStack.uid].get('pos'), parentObj: null});
     };
     obj.attachCardStack = function(cardStackUID){
       cardStack = ClientObjectCollection[cardStackUID];
       obj.appendChild(document.getElementById(cardStackUID));
       cardStack.snapTo(obj);
       ObjectCollection[obj.uid].set('cardStack', cardStackUID);
-      pushUpdateObjectRequest(obj.uid, {cardStack: {value: cardStackUID}});
+      pushUpdateObjectRequest(obj.uid, {cardStack: cardStackUID});
       ObjectCollection[cardStackUID].set('parentObj', obj.uid);
-      pushUpdateObjectRequest(cardStackUID, {pos: {value: ObjectCollection[cardStackUID].get('pos')}, parentObj: {value: obj.uid}});
+      pushUpdateObjectRequest(cardStackUID, {pos: ObjectCollection[cardStackUID].get('pos'), parentObj: obj.uid});
     };
     obj.addEventListener('contextmenu', function(event){
       $("#deck-menu").css({
@@ -502,24 +477,24 @@ function MakeMovable(obj){
   AttachToRoom(movableObj);
   movableObj.updateFunctions.push(function(updateData){
     if('pos' in updateData){// && movableObj.parentNode === document.getElementById('room')){
-      movableObj.updateClientPosition(updateData.pos.value);
-      if('z' in updateData.pos.value){
-        movableObj.style.zIndex = updateData.pos.value.z;
-        if(movableObj.parentNode === document.getElementById('room') && updateData.pos.value.z >= document.getElementById('room').children.length){
+      movableObj.updateClientPosition(updateData.pos);
+      if('z' in updateData.pos){
+        movableObj.style.zIndex = updateData.pos.z;
+        if(movableObj.parentNode === document.getElementById('room') && updateData.pos.z >= document.getElementById('room').children.length){
           AttachToRoom(movableObj);
         }
       }
     }
     if('moving' in updateData){
       //If start moving
-      if(!ObjectCollection[movableObj.uid].get('moving') && updateData.moving.value){
-        movableObj.setAttribute('data-content', updateData.user.value);
+      if(!ObjectCollection[movableObj.uid].get('moving') && updateData.moving){
+        movableObj.setAttribute('data-content', updateData.user);
         $(movableObj).popover('show');
         $(movableObj).css( 'filter', 'drop-shadow('+Math.round(ClientSizeMult*15)+'px '+Math.round(ClientSizeMult*15)+'px '+Math.round(ClientSizeMult*10)+'px #000)');
         gsap.to(movableObj, {duration: 0.1, rotation: 5});
       }
       //If end moving
-      else if(ObjectCollection[movableObj.uid].get('moving') && !updateData.moving.value){
+      else if(ObjectCollection[movableObj.uid].get('moving') && !updateData.moving){
         $(movableObj).popover('hide');
         $(movableObj).css( 'filter', '');
         gsap.to(movableObj, {duration: 0.1, rotation: 0});
@@ -570,22 +545,17 @@ function MakeMovable(obj){
   }
   return movableObj;
 }
-function CreateClientObject(uid, objType, objectData){
+function CreateClientObject(uid, objType, objectData, noSave){
   try{
     //Create Object Data (Model)
     var obj = {uid: uid, objType: objType, objData: {}};
     obj.get = function(attribute){
       //console.log('Trying to get: '+attribute+' of', obj);
-      if(obj.objData[attribute]){
-        return obj.objData[attribute].value;
-      }
-      else{
-        return null;
-      }
+      return obj.objData[attribute];
     };
-    obj.set = function(attribute, value){obj.objData[attribute].value = value};
+    obj.set = function(attribute, value){obj.objData[attribute] = value};
     for(attr in objectData){
-      if(objectData[attr].clientSave){
+      if(!noSave[attr]){
         //console.log('Saving ' + attr + ' to ' + uid, objectData[attr]);
         obj.objData[attr] = {};
         Object.assign(obj.objData[attr], objectData[attr]);
@@ -673,7 +643,7 @@ function FlipStack(cardStackObj){
   tl.pause();
   var duration = .1;
   for(var i = 0; i < cards.length; i++){
-      tl.call(pushUpdateObjectRequest, [cards[i], {faceUp : {value: !ObjectCollection[cards[i]].get('faceUp')}, cardLabel: {}}, true], '<'+duration*0.25);
+      tl.call(pushUpdateObjectRequest, [cards[i], {faceUp : !ObjectCollection[cards[i]].get('faceUp'), cardLabel: {}}, true], '<'+duration*0.25);
   }
   tl.resume();
 }

@@ -147,6 +147,11 @@ function setup() {
     }
   });
 
+  app.get('/card/:style([A-Za-z0-9_-]+)/:label([A-Za-z0-9_-]+)' ,function(req, res){
+      res.type('svg');
+      res.sendFile( __dirname + '/public/PlayingCards/'+req.params.style+'/'+req.params.label+'.svg');
+  });
+
   if (!module.parent) {
     console.log('Running express without cluster.');
     app.listen(process.env.PORT || 5000);

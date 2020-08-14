@@ -58,7 +58,7 @@ function ReleaseObject(elem){
     gsap.to(elem, {duration: 0.1, rotation: 0});
     $(elem).css( 'filter', '');
     ObjectCollection[elem.uid].set('moving', false);
-    pushUpdateObjectRequest(SelectedObject.uid, {moving: {value: false}});
+    pushUpdateObjectRequest(SelectedObject.uid, {moving: false});
   }
   DeselectActiveObject();
 }
@@ -69,7 +69,7 @@ function MakeSelectedObject(elem){
   SelectedObject = elem;
 }
 function DeselectActiveObject(){
-  pushUpdateObjectRequest(SelectedObject.uid, {releaseUser: {value: true}}, true);
+  pushUpdateObjectRequest(SelectedObject.uid, {releaseUser: true}, true);
   SelectedObject = null;
 }
 
@@ -89,17 +89,12 @@ function UpdateObject(uid, objData){
   }
 }
 
-function createNewCardManager(styleName){
+/*function createNewCardManager(styleName){
   createObjectRequest('CardManager', {styleName: {value: styleName}});
-}
+}*/
 function createObjectRequest(objType, objData, uid=null){
   console.log("Sending create object request for: " + objType, objData);
-  if(uid){
-    ws.send(JSON.stringify({type: 'createRequest', uid: uid, objType: objType, objData: objData}));
-  }
-  else{
-    ws.send(JSON.stringify({type: 'createRequest', objType: objType, objData: objData}));
-  }
+  ws.send(JSON.stringify({type: 'createRequest', uid: uid, objType: objType, objData: objData}));
 }
 function deleteObjectRequest(uid){
   if(ClientObjectCollection[uid]){
@@ -275,7 +270,7 @@ assignInputStartEvent(window, function(event){
 assignInputStartEvent($('#stack-no-fan'), function(event){
   var currentContext = ClientObjectCollection[document.getElementById('stack-menu').currentContext];
   ObjectCollection[currentContext.uid].set('arrangement', 'standard');
-  pushUpdateObjectRequest(currentContext.uid, {arrangement: {value: 'standard'}});
+  pushUpdateObjectRequest(currentContext.uid, {arrangement: 'standard'});
   ArrangeStack(currentContext, 'standard');
   document.getElementById('stack-menu').currentContext = null;
 });
@@ -283,7 +278,7 @@ assignInputStartEvent($('#stack-no-fan'), function(event){
 assignInputStartEvent($('#stack-fan-down'), function(event){
   var currentContext = ClientObjectCollection[document.getElementById('stack-menu').currentContext];
   ObjectCollection[currentContext.uid].set('arrangement', 'fandown');
-  pushUpdateObjectRequest(currentContext.uid, {arrangement: {value: 'fandown'}});
+  pushUpdateObjectRequest(currentContext.uid, {arrangement: 'fandown'});
   ArrangeStack(currentContext, 'fandown');
   document.getElementById('stack-menu').currentContext = null;
 });
@@ -291,7 +286,7 @@ assignInputStartEvent($('#stack-fan-down'), function(event){
 assignInputStartEvent($('#stack-fan-right'), function(event){
   var currentContext = ClientObjectCollection[document.getElementById('stack-menu').currentContext];
   ObjectCollection[currentContext.uid].set('arrangement', 'fanright');
-  pushUpdateObjectRequest(currentContext.uid, {arrangement: {value: 'fanright'}});
+  pushUpdateObjectRequest(currentContext.uid, {arrangement: 'fanright'});
   ArrangeStack(currentContext, 'fanright');
   document.getElementById('stack-menu').currentContext = null;
 });
@@ -299,7 +294,7 @@ assignInputStartEvent($('#stack-fan-right'), function(event){
 assignInputStartEvent($('#stack-fan-out'), function(event){
   var currentContext = ClientObjectCollection[document.getElementById('stack-menu').currentContext];
   ObjectCollection[currentContext.uid].set('arrangement', 'fanout');
-  pushUpdateObjectRequest(currentContext.uid, {arrangement: {value: 'fanout'}});
+  pushUpdateObjectRequest(currentContext.uid, {arrangement: 'fanout'});
   ArrangeStack(currentContext, 'fanout');
   document.getElementById('stack-menu').currentContext = null;
 });
@@ -313,10 +308,10 @@ assignInputStartEvent($('#stack-shuffle'), function(event){
   var currentContext = ClientObjectCollection[document.getElementById('stack-menu').currentContext];
   var shuffledCards = shuffleArray(ObjectCollection[currentContext.uid].get('cards'));
 
-  pushUpdateObjectRequest(currentContext.uid, {arrangement: {value: 'shuffle'}, cards: {value: shuffledCards}});
+  pushUpdateObjectRequest(currentContext.uid, {arrangement: 'shuffle', cards: shuffledCards});
   ArrangeStack(currentContext, 'shuffle', shuffledCards, function(){
     var arrangement = ObjectCollection[currentContext.uid].get('arrangement');
-    pushUpdateObjectRequest(currentContext.uid, {arrangement: {value: arrangement}});
+    pushUpdateObjectRequest(currentContext.uid, {arrangement: arrangement});
     ArrangeStack(currentContext, arrangement);
   });
   document.getElementById('stack-menu').currentContext = null;
@@ -388,8 +383,8 @@ assignInputStartEvent($('#deck-recall'), function(event){
     else{
       createObjectRequest('CardStack', {
         pos: ObjectCollection[currentContext.uid].objData.pos,
-        cards: {value: cardsInDeck},
-        parentObj: {value: currentContext.uid}
+        cards: cardsInDeck,
+        parentObj: currentContext.uid
       });
     }
   }});
@@ -449,7 +444,7 @@ ws.onmessage = function(e) {
     //console.log("Received Create Object Request: " , data);
     if(!(data.uid in ObjectCollection))
     {
-      CreateClientObject(data.uid, data.objType, data.objData);
+      CreateClientObject(data.uid, data.objType, data.objData, data.noSave);
       //pullUpdateObjectRequest(data.uid);
     }
     else

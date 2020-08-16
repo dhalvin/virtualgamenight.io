@@ -114,7 +114,7 @@ const InitializeObject = {
       }
     });
     try{
-      obj.cardImg.src = '/cards?style='+ObjectCollection[obj.uid].get('styleName') + '&label=card_back';
+      obj.cardImg.src = '/card/'+ObjectCollection[obj.uid].get('styleName') + '/card_back';
     }
     catch(err){console.log(err);}
     return obj;
@@ -554,11 +554,15 @@ function CreateClientObject(uid, objType, objectData, noSave){
       return obj.objData[attribute];
     };
     obj.set = function(attribute, value){obj.objData[attribute] = value};
+    if(objType == 'CardStack'){
+      console.log('test');
+    }
     for(attr in objectData){
       if(!noSave[attr]){
         //console.log('Saving ' + attr + ' to ' + uid, objectData[attr]);
-        obj.objData[attr] = {};
-        Object.assign(obj.objData[attr], objectData[attr]);
+        //obj.objData[attr] = {};
+        //Object.assign(obj.objData[attr], objectData[attr]);
+        obj.objData[attr] = objectData[attr];
       }
     }
     //Object.assign(obj.objData, objectData);

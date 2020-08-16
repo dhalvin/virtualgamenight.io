@@ -441,15 +441,17 @@ ws.onmessage = function(e) {
     strokeOnCanvas(data.uid, data.lineWidth, data.lineColor, data.start, data.end);
   }
   if(data.type == "createObject"){
-    //console.log("Received Create Object Request: " , data);
-    if(!(data.uid in ObjectCollection))
-    {
-      CreateClientObject(data.uid, data.objType, data.objData, data.noSave);
-      //pullUpdateObjectRequest(data.uid);
-    }
-    else
-    {
-      console.log("Object " + data.uid + " already exists...");
+    console.log("Received Create Object Request: " , data);
+    for(obj of data.objects){
+      if(!(obj.uid in ObjectCollection))
+      {
+        CreateClientObject(obj.uid, obj.objType, obj.objData, obj.noSave);
+        //pullUpdateObjectRequest(data.uid);
+      }
+      else
+      {
+        console.log("Object " + obj.uid + " already exists...");
+      }
     }
   }
   if(data.type == "deleteObject"){

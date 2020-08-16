@@ -106,9 +106,12 @@ function onUserDisconnected(user){
 function onCreateRequest(data, user){
   var uid = data.uid;
   if(!uid){uid = nanoid(4);}
-  SyncObjectFactory.CreateObject(user.roomid, uid, data.objType, data.objData, function(newObj){
-    ObjectStore.AddObject(user.roomid, newObj);
-    BroadcastToRoom(user.roomid, JSON.stringify({type: "createObject", uid: uid, objType: data.objType, objData: newObj.objData, noSave: SyncObjectFactory.NoSave[data.objType]}));
+  SyncObjectFactory.CreateObject(user.roomid, uid, data.objType, data.objData, function(newObjArr){
+    newObjMsg = {type: "createObject", objects: []};
+    for(newObj of newObjArr){
+      newObjMsg.objects.push({uid: newObj.uid, objType: newObj.objType, objData: newObj.objData, noSave: SyncObjectFactory.NoSave[newObj.objType]});
+    }
+    BroadcastToRoom(user.roomid, JSON.stringify(newObjMsg));
   });
 }
 

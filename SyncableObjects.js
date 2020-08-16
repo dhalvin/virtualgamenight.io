@@ -56,7 +56,7 @@ const ObjectTypes = {
       parentObj:  null
     });
     AssignObjData(obj.objData, objectData);
-    return InitializeObject['Card'](obj, completedAction);
+    completedAction(obj);
   },
   CardStack: function(roomid, uid, objectData, completedAction){
     var obj = {roomid: roomid, uid: uid, objType: 'CardStack', objData: {}};
@@ -67,7 +67,7 @@ const ObjectTypes = {
       arrangement: 'standard'
     });
     AssignObjData(obj.objData, objectData);
-    return InitializeObject['CardStack'](obj, completedAction);
+    completedAction(obj);
   },
   Deck: function(roomid, uid, objectData, completedAction){
     var obj = {roomid: roomid, uid: uid, objType: 'Deck', objData: {}};
@@ -83,19 +83,20 @@ const ObjectTypes = {
     });
     //console.log(obj.objData, obj.cards, obj.deckBuild);
     AssignObjData(obj.objData, objectData);
-    return InitializeObject['Deck'](obj, completedAction);
+    completedAction(obj);
   }
 }
 const InitializeObject = {
-  Card: function(obj, completedAction){completedAction(obj);},
+  Card: function(obj, completedAction){completedAction([obj]);},
   CardStack: function(obj, completedAction){
     var cards = obj.objData.cards;
     for(card of cards){
       ObjectStore.SetObjectProperties(obj.roomid, card, {'objData.pos.x': 0, 'objData.pos.y': 0, 'objData.parentObj': obj.uid});
     }
-    completedAction(obj);
+    completedAction([obj]);
   },
   Deck: function(obj, completedAction){
+    var objects = [];
     var deckBuild = obj.objData.deckBuild;
     var cards = obj.objData.cards;
     var labels = [];
@@ -106,22 +107,26 @@ const InitializeObject = {
       }
     }
     var createdCards = 0;
-    function onCreateCard(newObj){
+    function onCreateCard(newObjArr){
       /*if(newObj.uid in ProcessingObjects){
         delete ProcessingObjects[newObj.uid];
       }*/
-      ObjectStore.AddObject(obj.roomid, newObj);
+      //ObjectStore.AddObject(obj.roomid, newObj);
+      objects = objects.concat(newObjArr);
       createdCards++;
       if(createdCards < cards.length){
         CreateObject(obj.roomid, cards[createdCards], 'Card', {pos: obj.objData.pos, cardLabel: labels[createdCards], parentObj: obj.objData.cardStack}, onCreateCard);
       }
       else{
-        CreateObject(obj.roomid, obj.objData.cardStack, 'CardStack', {pos: obj.objData.pos, cards: cards, parentObj: obj.uid}, function(cardStackObj){
+        CreateObject(obj.roomid, obj.objData.cardStack, 'CardStack', {pos: obj.objData.pos, cards: cards, parentObj: obj.uid}, function(cardStackObjArr){
           /*if(cardStackObj.uid in ProcessingObjects){
             delete ProcessingObjects[cardStackObj.uid];
           }*/
-          ObjectStore.AddObject(obj.roomid, cardStackObj);
-          completedAction(obj);
+          //ObjectStore.AddObject(obj.roomid, cardStackObj);
+          objects = objects.concat(cardStackObjArr);
+          objects.push(obj);
+          //console.log('objs: ', objects);
+          completedAction(objects);
         });
       }
     };
@@ -134,7 +139,7 @@ const InitializeObject = {
 function AssignObjData(target, source){
   for(attribute in source){
     if(source[attribute] && typeof source[attribute] == 'object'){
-      console.log(attribute);
+      //console.log(attribute);
       Object.assign(target[attribute], source[attribute]);
     }
     else{
@@ -158,8 +163,12 @@ function MovableInterface(){
 
 function CreateObject(roomid, uid, objectType, objectData, completedAction){
   try{
-    console.log(objectData);
-    ObjectTypes[objectType](roomid, uid, objectData, completedAction);
+    //console.log(objectData);
+    ObjectTypes[objectType](roomid, uid, objectData, function(newObj){
+      ObjectStore.AddObject(roomid, newObj, function(){
+        InitializeObject[objectType](newObj, completedAction);
+      });
+    });
   }
   catch(err){
     console.log('Failed to create object: ' + objectType, err);

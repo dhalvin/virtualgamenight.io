@@ -91,7 +91,7 @@ const InitializeObject = {
   CardStack: function(obj, completedAction){
     var cards = obj.objData.cards;
     for(card of cards){
-      ObjectStore.SetObjectProperties(obj.roomid, obj.uid, {'pos.x': 0, 'pos.y': 0, 'parentObj': obj.uid});
+      ObjectStore.SetObjectProperties(obj.roomid, card, {'objData.pos.x': 0, 'objData.pos.y': 0, 'objData.parentObj': obj.uid});
     }
     completedAction(obj);
   },

@@ -2,61 +2,40 @@ const redis = require('redis'),
 redcli = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379'),
 flatten = require('flat'),
 unflatten = require('flat').unflatten;
-
+redis.add_command('JSON.SET');
 module.exports.GetObject = function(roomid, objectid, callback){
-  redcli.hgetall(roomid+objectid, function(err, value){
-    for(attr in value){
-      if(value[attr] === '~true'){
-        value[attr] = true;
-      }
-      else if(value[attr] === '~false'){
-        value[attr] = false;
-      }
-    }
-    callback(unflatten(value));
+  redcli.send_command('JSON.GET', [roomid+objectid], function(err, reply){
+    if(err){callback(0)}
+    else if(reply){callback(JSON.parse(reply))}
   });
 }
 
 //Properties is array of keys
+//Returns object of results
 module.exports.GetObjectProperties = function(roomid, objectid, properties, callback){
-  redcli.hmget(roomid+objectid, properties, function(err, reply){
+  redcli.send_command('JSON.GET', [roomid+objectid, properties.join(' ')], function(err, reply){
     if(err){callback(0)}
-    else if(reply){callback(reply)}
+    else if(reply){callback(JSON.parse(reply))}
   });
+}
+
+module.exports.SetObjectProperty = function(roomid, objectid, key, value){
+  redcli.send_command('JSON.SET', [roomid+objectid, key, JSON.stringify(value)]);
 }
 
 //Properties is object of key/value pairs
 module.exports.SetObjectProperties = function(roomid, objectid, properties){
-  args = [roomid+objectid];
-  for(attr in properties){
-    args.push(attr);
-    args.push(properties[attr]);
+  commands = []
+  for(prop in properties){
+    commands.push(['JSON.SET', roomid+objectid, prop, JSON.stringify(properties[prop])]);
   }
-  redcli.hmset(args);
+  redcli.batch(commands).exec();
 }
 
 module.exports.AddObject = function(roomid, object, callback){
-  flatObj = flatten(object);
-  args = [roomid+object.uid];
-  for(attr in flatObj){
-    if(flatObj[attr] != null && !(Array.isArray(flatObj[attr]) && flatObj[attr].length == 0)){
-      args.push(attr);
-      if(flatObj[attr] === false){
-        args.push('~false');
-      }
-      else if(flatObj[attr] === true){
-        args.push('~true');
-      }
-      else{
-        args.push(flatObj[attr]);
-      }
-      
-      
-    }
-  }
-  redcli.hmset(args);
+  redcli.send_command('JSON.SET', [roomid+object.uid, '.', JSON.stringify(object)]);
 }
 
 module.exports.DeleteObject = function(roomid, objectid){
-  redcli.del(roomid+objectid);
+  redcli.send_command('JSON.DEL', roomid+objectid);
 }

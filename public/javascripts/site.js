@@ -73,14 +73,14 @@ function DeselectActiveObject(){
   SelectedObject = null;
 }
 
-function UpdateObject(uid, objData){
+function UpdateObject(uid, objData, noSave){
   var clientObj = ClientObjectCollection[uid];
   for(updateFunction of clientObj.updateFunctions){
     updateFunction(objData);
   }
   var obj = ObjectCollection[uid];
   for(attr in objData){
-    if(objData[attr].clientSave){
+    if(!(attr in noSave)){
       console.log('Saving ' + attr + ' to ' + uid, objData[attr]);
       console.log('Before: ', obj.objData[attr]);
       obj.objData[attr] = objData[attr];
@@ -432,11 +432,11 @@ document.getElementById('room').addEventListener('contextmenu', function(event){
   event.stopPropagation();
 });
 
-//const ws = new WebSocket('ws://192.168.33.202:8080/');
-
 ws.onmessage = function(e) {
   //console.log(e.data);
   var data = JSON.parse(e.data);
+  console.log(data);
+  if(data.user && data.user == MYUSERID && !data.updateSelf){return;}
   if(data.type == "canvasStroke"){
     strokeOnCanvas(data.uid, data.lineWidth, data.lineColor, data.start, data.end);
   }
@@ -467,7 +467,7 @@ ws.onmessage = function(e) {
   if(data.type == "updateObject"){
     //console.log("Received Update Request: " + data.uid);
     //console.log(data);
-    UpdateObject(data.uid, data.objData);
+    UpdateObject(data.uid, data.objData, data.noSave);
   }
   if(data.type == "moveObject"){
     console.log("Move reqeust rcvd", data);

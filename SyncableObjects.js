@@ -17,7 +17,7 @@ const StandardDeckBuild = {'Spades_2': 1, 'Spades_3': 1, 'Spades_4': 1, 'Spades_
 'Diamonds_2': 1, 'Diamonds_3': 1, 'Diamonds_4': 1, 'Diamonds_5': 1, 'Diamonds_6': 1, 'Diamonds_7': 1, 'Diamonds_8': 1, 'Diamonds_9': 1, 'Diamonds_10': 1, 'Diamonds_J': 1, 'Diamonds_Q': 1, 'Diamonds_K': 1, 'Diamonds_A': 1, 
 'Clubs_2': 1, 'Clubs_3': 1, 'Clubs_4': 1, 'Clubs_5': 1, 'Clubs_6': 1, 'Clubs_7': 1, 'Clubs_8': 1, 'Clubs_9': 1, 'Clubs_10': 1, 'Clubs_J': 1, 'Clubs_Q': 1, 'Clubs_K': 1, 'Clubs_A': 1, 'joker_red': 0, 'joker_black': 0};
 
-const ClientTrust = {
+module.exports.ClientTrust = {
   movable: false,
   pos : true,
   locked : true,
@@ -25,6 +25,7 @@ const ClientTrust = {
   user : false,
   lastUser : false,
   moving : true,
+  releaseUser: false,
   cardLabel: false,
   faceUp: true,
   parentManager: true,
@@ -39,7 +40,7 @@ const ClientTrust = {
 };
 
 module.exports.NoSave = {
-  Card: {lastUser: true, label: true},
+  Card: {lastUser: true, cardLabel: true},
   CardStack: {lastUser: true},
   Deck: {lastUser: true}
 }
@@ -163,7 +164,6 @@ function MovableInterface(){
 
 function CreateObject(roomid, uid, objectType, objectData, completedAction){
   try{
-    //console.log(objectData);
     ObjectTypes[objectType](roomid, uid, objectData, function(newObj){
       ObjectStore.AddObject(roomid, newObj, function(){
         InitializeObject[objectType](newObj, completedAction);

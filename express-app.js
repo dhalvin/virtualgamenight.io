@@ -14,6 +14,7 @@ const express = require('express'),
   { nanoid } = require('nanoid'),
   validator = require('express-validator'),
   common = require('./common'),
+  RoomManager = require('./RoomManager'),
   app = module.exports = express();
 setup();
 
@@ -68,13 +69,12 @@ function setup() {
       if(req.body.action == 'Create'){
           var newRoomID = nanoid(5);
           //If our new room id collides with an existing one, try again
-          redcli.get('room'+newRoomID, function(err, reply){
-            if(!reply){
-              redcli.set('room'+newRoomID, new Date().getTime());
+          RoomManager.CreateRoom(newRoomID, function(result){
+            if(result && result === 'OK'){
               res.render('join', {title: 'Virtual Game Night: Creating...', roomid: newRoomID});
             }
             else{
-              res.redirect(307, '/join')
+              res.redirect(307, '/join');
             }
           });
       }
@@ -85,9 +85,8 @@ function setup() {
           res.redirect('/');
         }
         //If room code does not exist, redirect back to index storing error in session
-        redcli.get('room'+req.body.roomid, function(err, reply){
-          if(!reply){
-            console.log('test');
+        RoomManager.RoomExists(req.body.roomid, function(exists){
+          if(!exists){
             req.session.errors = '[{"msg": "Room code not found..."}]';
             res.redirect('/');
           }
@@ -101,7 +100,7 @@ function setup() {
   
   app.get('/:id([A-Za-z0-9_-]{5})', function(req,res){
     if(req.session.roomid && req.session.roomid === req.params.id){
-      res.render('app', {title: 'Virtual Game Night', displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host')});
+      res.render('app', {title: 'Virtual Game Night', displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host'), userid: req.session.userid});
     }
     else{
       res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.params.id});
@@ -129,8 +128,12 @@ function setup() {
       res.redirect('/join');
     }
     else {
-      redcli.get('room'+req.body.roomid, function(err, reply){
-        if(reply){
+      RoomManager.RoomExists(req.body.roomid, function(exists){
+        if(!exists){
+          req.session.errors = '[{"msg": "Room code not found..."}]';
+          res.redirect('/');
+        }
+        else{
           var roomid = req.body.roomid;
           req.session.roomid = roomid;
           req.session.displayName = req.body.displayName;
@@ -138,10 +141,6 @@ function setup() {
             req.session.userid = nanoid(6);
           }
           res.redirect('/'+roomid);
-        }
-        else{
-          req.session.errors = '[{"msg": "Room code not found..."}]';
-          res.redirect('/');
         }
       });
     }

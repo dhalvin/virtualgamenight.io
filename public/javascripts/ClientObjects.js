@@ -323,7 +323,7 @@ const InitializeObject = {
         if(obj.contains(ClientObjectCollection[card])){
           var cardObj =  ClientObjectCollection[card];
           UnparentClientObject(cardObj);
-          pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], parentObj: null, moving: false, locked: false, releaseUser: true}, true);
+          //pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], parentObj: null, moving: false, locked: false, releaseUser: true}, true);
         }
       }
       var parentObj = ObjectCollection[obj.uid].get('parentObj');

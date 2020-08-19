@@ -55,6 +55,7 @@ module.exports.AddObject = function(roomid, object, callback){
 }
 
 module.exports.DeleteObject = function(roomid, objectid){
+  console.log('deleting object: ' + roomid + objectid);
   RoomManager.UnregisterObject(roomid, objectid);
-  redcli.send_command('JSON.DEL', roomid+objectid);
+  redcli.send_command('JSON.DEL', [roomid+objectid]);
 }

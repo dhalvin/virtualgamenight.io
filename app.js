@@ -9,7 +9,7 @@ var workers = {},
 function spawn(){
   var worker = cluster.fork();
   workers[worker.process.pid] = worker;
-  console.log('Spawning worker with id ' + worker.process.id);
+  console.log('Spawning worker with id ' + worker.process.pid);
   return worker;
 }
 

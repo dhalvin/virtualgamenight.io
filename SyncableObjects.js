@@ -1,6 +1,7 @@
 const { nanoid } = require('nanoid'),
   fs = require('fs'),
-  ObjectStore = require('./ObjectStore');
+  ObjectStore = require('./ObjectStore'),
+  Requests = require('./RequestManager');
 const ObjectCollection = {};
 const ProcessingObjects = {};
 
@@ -109,10 +110,6 @@ const InitializeObject = {
     }
     var createdCards = 0;
     function onCreateCard(newObjArr){
-      /*if(newObj.uid in ProcessingObjects){
-        delete ProcessingObjects[newObj.uid];
-      }*/
-      //ObjectStore.AddObject(obj.roomid, newObj);
       objects = objects.concat(newObjArr);
       createdCards++;
       if(createdCards < cards.length){
@@ -120,13 +117,8 @@ const InitializeObject = {
       }
       else{
         CreateObject(obj.roomid, obj.objData.cardStack, 'CardStack', {pos: obj.objData.pos, cards: cards, parentObj: obj.uid}, function(cardStackObjArr){
-          /*if(cardStackObj.uid in ProcessingObjects){
-            delete ProcessingObjects[cardStackObj.uid];
-          }*/
-          //ObjectStore.AddObject(obj.roomid, cardStackObj);
           objects = objects.concat(cardStackObjArr);
           objects.push(obj);
-          //console.log('objs: ', objects);
           completedAction(objects);
         });
       }
@@ -136,7 +128,28 @@ const InitializeObject = {
     CreateObject(obj.roomid, cards[0], 'Card', {pos: obj.objData.pos, cardLabel: labels[0], parentObj: obj.objData.cardStack}, onCreateCard);
   }
 }
+DeleteObject = {
+  Card : function(roomid, uid, callback){callback()},
+  CardStack : function(roomid, uid, callback){
+    ObjectStore.GetObjectProperties(roomid, uid, ['objData.cards'], function(props){
+      for(card of props['objData.cards']){
+        ObjectStore.SetObjectProperties(roomid, card, {'objData.parentObj': null, 'objData.moving': false, 'objData.locked': false, 'objData.releaseUser': true});
+        data = {uid: card, objData: {parentObj: null, moving: false, locked: false, releaseUser: true}};
+        data.user = null;
+        data.noSave = module.exports.NoSave['Card'];
+        Requests.PushUpdate(roomid, data);
+      }
+      callback();
+    });
+  },
+  Deck : function(roomid, uid, callback){callback()}
+}
 
+module.exports.DeleteObject = function(roomid, uid, callback){
+  ObjectStore.GetObjectProperties(roomid, uid, ['objType'], function(props){
+    DeleteObject[props.objType](roomid, uid, callback);
+  });
+}
 function AssignObjData(target, source){
   for(attribute in source){
     if(source[attribute] && typeof source[attribute] == 'object'){

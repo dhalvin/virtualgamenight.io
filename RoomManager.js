@@ -27,7 +27,7 @@ module.exports.RegisterObject = function(roomid, objectid){
   redcli.send_command('JSON.SET', ['room:'+roomid, 'objects["'+objectid+'"]', JSON.stringify(1)]);
 };
 module.exports.UnregisterObject = function(roomid, objectid){
-  redcli.send_command('JSON.DEL', ['room:'+roomid, 'objects["'+objectid]+'"]');
+  redcli.send_command('JSON.DEL', ['room:'+roomid, 'objects["'+objectid+'"]']);
 };
 module.exports.UserJoin = function(roomid, userid){
   redcli.send_command('JSON.SET', ['room:'+roomid, 'users["'+userid+'"]', JSON.stringify(1)]);

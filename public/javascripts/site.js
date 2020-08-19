@@ -337,10 +337,11 @@ assignInputStartEvent($('#stack-split'), function(event){
 assignInputStartEvent($('#stack-explode'), function(event){
   var currentContext = ClientObjectCollection[document.getElementById('stack-menu').currentContext];
   var cards = ObjectCollection[currentContext.uid].get('cards');
-  var tl = gsap.timeline({onComplete: function(){
+  var tl = gsap.timeline({onStart: function(){
     deleteObjectRequest(currentContext.uid);
   }});
   tl.pause();
+  tl.set({}, {}, '>0.2');
   var stackBounds = currentContext.getBoundingClientRect();
   var RoomBounds = document.getElementById('room').getBoundingClientRect();
   var xMin = Math.max(-500*ClientSizeMult, RoomBounds.left - stackBounds.left);
@@ -358,7 +359,6 @@ assignInputStartEvent($('#stack-explode'), function(event){
       moveObjectRequest(card, {duration: 1, leftPre: '+=', left: serverLoc.x, topPre: '+=', top: serverLoc.y, rotation: 0, ease: 'power4'});
     },onStartParams: [randX, randY]}, '<');
   }
-  tl.set({}, {}, '>0.5');
   tl.resume();
   document.getElementById('stack-menu').currentContext = null;
 });
@@ -419,7 +419,7 @@ assignInputStartEvent($('#deck-recall'), function(event){
 });
 
 assignInputStartEvent($('#create-deck'), function(event){
-  CardManagers["Default"].CreateDeck(ClientToServerPos({x: event.target.style.left, y: event.target.style.top}));
+  createObjectRequest('Deck', {pos: ClientToServerPos({x: parseInt(event.target.parentNode.style.left), y: parseInt(event.target.parentNode.style.top)})});
 });
 document.getElementById('room').addEventListener('contextmenu', function(event){
   //MakeSelectedObject(event.currentTarget);

@@ -18,7 +18,6 @@ module.exports.GetObjectProperties = function(roomid, objectid, properties, call
       callback(0);
     }
     else if(reply){
-      console.log(reply);
       if(properties.length == 1){
         var result = {};
         result[properties[0]] = JSON.parse(reply);
@@ -37,17 +36,14 @@ module.exports.SetObjectProperty = function(roomid, objectid, key, value){
 
 //Properties is object of key/value pairs
 module.exports.SetObjectProperties = function(roomid, objectid, properties){
-  console.log('Setting ' + objectid , properties);
   commands = []
   for(prop in properties){
     commands.push(['JSON.SET', roomid+objectid, prop, JSON.stringify(properties[prop])]);
   }
-  console.log(commands);
   redcli.batch(commands).exec();
 }
 
 module.exports.AddObject = function(roomid, object, callback){
-  //console.log('Adding ' + object.objType + ' ' + object.uid);
   RoomManager.RegisterObject(roomid, object.uid);
   redcli.send_command('JSON.SET', [roomid+object.uid, '.', JSON.stringify(object)], function(){
     callback();
@@ -55,7 +51,6 @@ module.exports.AddObject = function(roomid, object, callback){
 }
 
 module.exports.DeleteObject = function(roomid, objectid){
-  console.log('deleting object: ' + roomid + objectid);
   RoomManager.UnregisterObject(roomid, objectid);
   redcli.send_command('JSON.DEL', [roomid+objectid]);
 }

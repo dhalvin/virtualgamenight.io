@@ -126,6 +126,7 @@ const InitializeObject = {
     obj.objData.cardStack = nanoid(4);
     console.log(cards, labels);
     CreateObject(obj.roomid, cards[0], 'Card', {pos: obj.objData.pos, cardLabel: labels[0], parentObj: obj.objData.cardStack}, onCreateCard);
+    ObjectStore.SetObjectProperties(obj.roomid, obj.uid, {'objData.cards': obj.objData.cards});
   }
 }
 DeleteObject = {

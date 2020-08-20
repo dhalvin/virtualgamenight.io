@@ -114,7 +114,12 @@ const InitializeObject = {
       }
     });
     try{
-      obj.cardImg.src = '/card/'+ObjectCollection[obj.uid].get('styleName') + '/card_back';
+      if(startData.faceUp){
+        obj.cardImg.src = '/card/'+ObjectCollection[obj.uid].get('styleName') + '/' + startData.cardLabel;
+      }
+      else{
+        obj.cardImg.src = '/card/'+ObjectCollection[obj.uid].get('styleName') + '/card_back';
+      }
     }
     catch(err){console.log(err);}
     return obj;

@@ -1,9 +1,0 @@
-<h3>Welcome {{displayName}}</h3>
-<h4>You're in room: {{roomid}}</h4>
-<script>
-    const ws = new WebSocket("ws://{{serverAddress}}/");
-    ws.onmessage = function(e){
-        var data = JSON.parse(e.data);
-        console.log(data);
-    }
-</script>

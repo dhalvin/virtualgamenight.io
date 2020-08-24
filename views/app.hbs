@@ -1,28 +1,114 @@
   
-<div id="room" class="container-fluid">
-<h3>Who's here?</h3>
-<div id="connectedUsers" class="container">
-</div>
-</div>
-<div class="dropdown-menu" id="stack-menu" data-reference="parent">
-  <a class="dropdown-item" href="#" id="stack-shuffle">Shuffle</a>
-  <a class="dropdown-item" href="#" id="stack-deal">Deal</a>
-  <a class="dropdown-item" href="#" id="stack-flip">Flip</a>
-  <a class="dropdown-item" href="#" id="stack-split">Split</a>
-  <a class="dropdown-item" href="#" id="stack-explode">Explode</a>
-  <div class="dropdown-divider"></div>
-  <a class="dropdown-item" href="#" id="stack-fan-down">Fan Down</a>
-  <a class="dropdown-item" href="#" id="stack-fan-right">Fan Right</a>
-  <a class="dropdown-item" href="#" id="stack-fan-out">Fan Out</a>
-  <a class="dropdown-item" href="#" id="stack-no-fan">No Fan</a>
-</div>
-<div class="dropdown-menu" id="deck-menu" data-reference="parent">
-  <a class="dropdown-item" href="#" id="deck-recall">Recall Cards</a>
-</div>
-<div class="dropdown-menu" id="back-menu" data-reference="parent">
-  <a class="dropdown-item" href="#" id="create-deck">Create New Deck</a>
-  <a class="dropdown-item" href="#" id="reset-room">Reset Room</a>
-</div>
+<nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+  <nav class="navbar navbar-dark navbar-brand col-md-3 col-lg-2 mr-0"><a class="mr-0 px-3" href="/">Virtual Game Night.io</a></nav>
+  <button class="navbar-toggler position-absolute btn btn-dark" id="buttonMenu" type="button" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+    <span><svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-list" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path fill-rule="evenodd" d="M2.5 11.5A.5.5 0 0 1 3 11h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 3 7h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 3 3h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+    </svg></span>
+  </button>
+</nav>
+<div class="row">
+  <nav id="sidebarMenu" class="col-md-3 col-lg-2 bf-light bg-dark sidebar">
+    <div class="sidebar-sticky p-0">
+      <div id="chatCard" class="card">
+        <div class="card-header h-auto p-0" id="headingChat">
+          <h6 class="sidebar-heading justify-content-between align-items-center text-muted">
+            <button class="btn btn-light btn-block btn-sm p-0 disabled sidebtn" border="" type="button" data-toggle="collapse" data-target="#collapseChat" aria-expanded="true" aria-controls="collapseChat">Room Chat</button>
+          </h6>
+        </div>
+        <div id="collapseChat" class="collapse show" aria-labelledby="headingChat">
+          <div class="card-body">
+            <textarea class="form-control" readonly></textarea>
+            <div class="input-group mb-3">
+              <input type="text" class="form-control" placeholder="Message">
+              <div class="input-group-append">
+                <button class="btn btn-outline-secondary" type="button" id="button-chatSend">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="userCard" class="card">
+        <div class="card-header p-0" id="headingUser">
+          <h6 class="sidebar-heading justify-content-between align-items-center text-muted">
+            <button class="btn btn-light btn-block btn-sm p-0 disabled sidebtn" type="button" data-toggle="collapse" data-target="#collapseUser" aria-expanded="true" aria-controls="collapseUser">User List</button>
+          </h6>
+        </div>
+        <div id="collapseUser" class="collapse show" aria-labelledby="headingUser">
+          <div class="card-body">
+            <ul class="nav flex-column">
+              <li class="nav-item">User 1</li>
+              <li class="nav-item">User 2</li>
+              <li class="nav-item">User 3</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <main id="room" class="px-0 collapseMargin"></main>
+  <div class="dropdown-menu" id="stack-menu" data-reference="parent">
+    <a class="dropdown-item" href="#" id="stack-shuffle">Shuffle</a>
+    <a class="dropdown-item" href="#" id="stack-deal">Deal</a>
+    <a class="dropdown-item" href="#" id="stack-flip">Flip</a>
+    <a class="dropdown-item" href="#" id="stack-split">Split</a>
+    <a class="dropdown-item" href="#" id="stack-explode">Explode</a>
+    <div class="dropdown-divider"></div>
+    <a class="dropdown-item" href="#" id="stack-fan-down">Fan Down</a>
+    <a class="dropdown-item" href="#" id="stack-fan-right">Fan Right</a>
+    <a class="dropdown-item" href="#" id="stack-fan-out">Fan Out</a>
+    <a class="dropdown-item" href="#" id="stack-no-fan">No Fan</a>
+  </div>
+  <div class="dropdown-menu" id="deck-menu" data-reference="parent">
+    <a class="dropdown-item" href="#" id="deck-recall">Recall Cards</a>
+  </div>
+  <div class="dropdown-menu" id="back-menu" data-reference="parent">
+    <a class="dropdown-item" href="#" id="create-deck">Create New Deck</a>
+    <a class="dropdown-item" href="#" id="reset-room">Reset Room</a>
+  </div>
+<script>
+  let HIDDEN = 0;
+  let SHOWN = 1;
+  var MenuState = SHOWN;
+  var sidebarTween = gsap.to('#sidebarMenu', {
+      duration: 0.35, height: 0,
+      onComplete: function(){$('#sidebarMenu').hide();},
+      onReverseComplete: function(){$('#sidebarMenu').height('auto');}
+    });
+  sidebarTween.pause();
+  $('#buttonMenu').on('click', function () {
+    if(MenuState == HIDDEN){
+      $('#sidebarMenu').show();
+      $('#room').removeClass('nomenu');
+      $('#sidebarMenu').removeClass('nomenu');
+      if(window.innerWidth < 768){
+        sidebarTween.progress(0.99);
+        sidebarTween.reverse();
+      }
+      else{
+        $('#sidebarMenu').height('auto');
+      }
+      MenuState = SHOWN;
+    }
+    else{
+      $('#room').addClass('nomenu');
+      $('#sidebarMenu').addClass('nomenu');
+      gsap.to('#sidebarMenu', {
+        duration: 0.35,
+        onComplete: function(){
+          $('#sidebarMenu').hide();}
+        });
+      if(window.innerWidth < 768){
+        sidebarTween = gsap.to('#sidebarMenu', {
+          duration: 0.35, height: 0,
+          onComplete: function(){$('#sidebarMenu').hide();},
+          onReverseComplete: function(){$('#sidebarMenu').height('auto');}
+        });
+      }
+      MenuState = HIDDEN;
+    }  
+  });
+</script>
 <script>const ws = new WebSocket("ws://{{serverAddress}}/"); let MYUSERID = "{{userid}}";</script>
 <script src="javascripts/ClientObjects.js"></script>
 <script src="javascripts/site.js"></script>

@@ -1,24 +1,143 @@
 .draggable {
-    position: absolute;
-    text-align: center;
+  position: absolute;
+  text-align: center;
+}
+
+.draggableHeader {
+  padding: 30px;
+  background-color: #2196F3;
+  color: #fff;
+}
+
+#room {
+  position: relative;
+  background-color: #e7e7e7;
+}
+
+#stack-menu {
+  position: absolute;
+}
+body {
+  height: 100%;
+  font-size: .875rem;
+  overflow: hidden;
+}
+html {
+  height: 100%;
+}
+
+/*
+  * Sidebar
+  */
+
+.sidebar {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100; /* Behind the navbar */
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar-sticky {
+  position: relative;
+  top: 0;
+  height: auto;
+  padding-top: .5rem;
+  overflow-x: hidden;
+  overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+}
+
+@supports ((position: -webkit-sticky) or (position: sticky)) {
+  .sidebar-sticky {
+    position: -webkit-sticky;
+    position: sticky;
   }
-  
-  .draggableHeader {
-    padding: 30px;
-    background-color: #2196F3;
-    color: #fff;
+}
+
+.sidebar-heading {
+  font-size: .75rem;
+  text-transform: uppercase;
+}
+
+/*
+* Navbar
+*/
+
+.navbar-brand {
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+  font-size: 1rem;
+  background-color: rgba(0, 0, 0, .25);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .25);
+}
+
+.navbar-brand a {
+  font-size: 1rem;
+  color: #fff;
+}
+.navbar-toggler {
+  top: .25em;
+  right: 1rem;
+  left: auto;
+}
+
+@media (min-width: 768px) {
+  .navbar-toggler{
+    right: auto;
+    left: calc(1rem + 3*100%/12);
   }
-  
-  #room {
-    position: relative;
-    background-color: #e7e7e7;
+}
+
+@media (min-width: 992px) {
+  .navbar-toggler{
+    right: auto;
+    left: calc(1rem + 2*100%/12);
   }
-  #stack-menu {
-    position: absolute;
+}
+
+.sidebtn:focus {
+  box-shadow: none;
+}
+
+.collapseMargin, .sidebar {
+  margin-left: auto;
+  margin-right: auto;
+}
+.sidebar {
+  transition: none;
+  height: auto;
+  overflow:auto;
+}
+.sidebar.nomenu {
+  overflow: hidden;
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .collapseMargin, .sidebar{
+    transition: margin-left 0.35s ease;
   }
-  body {
-    height: 100%;
+  .collapseMargin.nomenu, .sidebar{
+    margin-left: 0;
   }
-  html {
-    height: 100%;
+  .collapseMargin {
+    margin-left: calc(3*100%/12);
   }
+  .sidebar.nomenu {
+    margin-left: calc(-3*100%/12);
+  }
+  .sidebar {
+    position: fixed;
+    height: auto;
+    padding: 48px 0 0; /* Height of navbar */
+  }
+}
+
+@media (min-width: 992px) {
+  .collapseMargin {
+    margin-left: calc(2*100%/12);
+  }
+  .sidebar.nomenu {
+    margin-left: calc(-2*100%/12);
+  }
+}

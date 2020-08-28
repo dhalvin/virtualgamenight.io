@@ -11,6 +11,8 @@
 
 #room {
   position: relative;
+  margin-left: auto;
+  margin-right: auto;
   background-color: #e7e7e7;
 }
 
@@ -31,27 +33,49 @@ html {
   */
 
 .sidebar {
-  top: 0;
+  will-change: transform;
+  position: absolute;
   bottom: 0;
   left: 0;
+  right: 0;
   z-index: 100; /* Behind the navbar */
-  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+  padding: 0;
+  transition: transform 0.35s ease;
+  overflow-y: auto;
+  max-height: 50%;
+
+}
+.sidebar.nomenu {
+  overflow: hidden;
+  transform: translateY(100%);
 }
 
-.sidebar-sticky {
-  position: relative;
-  top: 0;
-  height: auto;
-  padding-top: .5rem;
-  overflow-x: hidden;
-  overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
-}
-
-@supports ((position: -webkit-sticky) or (position: sticky)) {
-  .sidebar-sticky {
-    position: -webkit-sticky;
-    position: sticky;
+@media (min-width: 576px) {
+  .sidebar {
+    max-height: calc(100% - 48px);
+    bottom: 0;
+    left: 0;
+    right: 0;
   }
+  .sidebar.nomenu {
+    overflow: hidden;
+    transform: translateY(100%);
+  }
+}
+
+@media (min-width: 768px) {
+  .sidebar {
+    max-height: 100%;
+    top: 0;
+    padding: 48px 0 0 0; /* Height of navbar */
+  }
+  .sidebar.nomenu {
+    overflow: hidden;
+    transform: translateY(-100%);
+  }
+}
+
+@media (min-width: 992px) {
 }
 
 .sidebar-heading {
@@ -99,45 +123,10 @@ html {
   box-shadow: none;
 }
 
-.collapseMargin, .sidebar {
-  margin-left: auto;
-  margin-right: auto;
-}
-.sidebar {
-  transition: none;
-  height: auto;
-  overflow:auto;
-}
-.sidebar.nomenu {
+.overflowHidden {
   overflow: hidden;
-  display: block;
 }
 
-@media (min-width: 768px) {
-  .collapseMargin, .sidebar{
-    transition: margin-left 0.35s ease;
-  }
-  .collapseMargin.nomenu, .sidebar{
-    margin-left: 0;
-  }
-  .collapseMargin {
-    margin-left: calc(3*100%/12);
-  }
-  .sidebar.nomenu {
-    margin-left: calc(-3*100%/12);
-  }
-  .sidebar {
-    position: fixed;
-    height: auto;
-    padding: 48px 0 0; /* Height of navbar */
-  }
-}
-
-@media (min-width: 992px) {
-  .collapseMargin {
-    margin-left: calc(2*100%/12);
-  }
-  .sidebar.nomenu {
-    margin-left: calc(-2*100%/12);
-  }
+.overflowAuto {
+  overflow: auto;
 }

@@ -256,6 +256,7 @@ assignInputMoveEvent(window, function(event){
   }
   event.preventDefault();
 });
+
 assignInputEndEvent(window, function(event){
   if(SelectedObject){
     ReleaseObject(SelectedObject);

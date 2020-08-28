@@ -14,7 +14,7 @@ function assignInputStartEvent(elem, behavior, buttons=[1]){
       $(elem).on('touchend', function(event){//elem.addEventListener("touchend", function(event){
       elem.dispatchEvent(new MouseEvent("mouseup", event));
       event.which = 1;
-      event.preventDefault();
+      //event.preventDefault();
     });//, false);
     $(elem).mouseup(function(event){
       if(event.which === 1){behavior(event)};

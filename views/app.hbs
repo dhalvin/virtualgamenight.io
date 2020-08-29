@@ -18,9 +18,9 @@
       </div>
       <div id="collapseChat" class="collapse show" aria-labelledby="headingChat">
         <div class="card-body overflowAuto">
-          <textarea class="form-control" readonly></textarea>
+          <textarea id="chatBox" class="form-control" readonly></textarea>
           <div class="input-group mb-3">
-            <input type="text" class="form-control" placeholder="Message">
+            <input id="chatInput" type="text" class="form-control" placeholder="Message">
             <div class="input-group-append">
               <button class="btn btn-outline-secondary" type="button" id="button-chatSend">Send</button>
             </div>
@@ -36,10 +36,7 @@
       </div>
       <div id="collapseUser" class="collapse show" aria-labelledby="headingUser">
         <div class="card-body overflowAuto">
-          <ul class="nav flex-column">
-            <li class="nav-item">User 1</li>
-            <li class="nav-item">User 2</li>
-            <li class="nav-item">User 3</li>
+          <ul id="userList" class="nav flex-column">
           </ul>
         </div>
       </div>

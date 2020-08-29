@@ -4,7 +4,7 @@ redcli = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379');
 module.exports.LoadRoom = function(){};
 module.exports.SaveRoom = function(){};
 module.exports.CreateRoom = function(roomid, callback){
-  redcli.send_command('JSON.SET', ['room:'+roomid, '.', JSON.stringify({'users': {}, 'objects': {}}), 'NX'], function(err, reply){
+  redcli.send_command('JSON.SET', ['room:'+roomid, '.', JSON.stringify({'users': {}, 'objects': {}, 'chatlog': []}), 'NX'], function(err, reply){
     if(err){
       console.log(err);
     }
@@ -29,15 +29,15 @@ module.exports.RegisterObject = function(roomid, objectid){
 module.exports.UnregisterObject = function(roomid, objectid){
   redcli.send_command('JSON.DEL', ['room:'+roomid, 'objects["'+objectid+'"]']);
 };
-module.exports.UserJoin = function(roomid, userid){
-  redcli.send_command('JSON.SET', ['room:'+roomid, 'users["'+userid+'"]', JSON.stringify(1)]);
+module.exports.UserJoin = function(roomid, userid, displayName, callback){
+  redcli.send_command('JSON.SET', ['room:'+roomid, 'users["'+userid+'"]', JSON.stringify(displayName)], callback);
 };
 module.exports.UserLeave = function(roomid, userid){
   redcli.send_command('JSON.DEL', ['room:'+roomid, 'users["'+userid+'"]']);
 };
 
 module.exports.GetUsers = function(roomid, callback){
-  redcli.send_command('JSON.OBJKEYS', ['room:'+roomid, 'users'], function(err, reply){
+  redcli.send_command('JSON.GET', ['room:'+roomid, 'users'], function(err, reply){
     if(err){
       console.log(err);
     }
@@ -47,6 +47,22 @@ module.exports.GetUsers = function(roomid, callback){
   });
 }
 
+module.exports.AppendChat = function(roomid, message){
+  redcli.send_command('JSON.ARRAPPEND', ['room:'+roomid, 'chatlog', JSON.stringify(message)]);
+}
+
+module.exports.RetrieveRoomDetails = function(roomid, callback){
+
+  redcli.send_command('JSON.GET', ['room:'+roomid, 'chatlog'], function(err, reply){
+    if(err){
+      console.log(err);
+      callback(0);
+    }
+    module.exports.GetUsers(roomid, function(users){
+      callback({users: users, chatlog: JSON.parse(reply)})
+    });
+  });
+}
 //EXPENSIVE
 module.exports.GetObjects = function(roomid, callback){
   redcli.send_command('JSON.OBJKEYS', ['room:'+roomid, 'objects'], function(err, reply){

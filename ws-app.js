@@ -74,7 +74,7 @@ function onUserConnected(user){
     if(reply){
       var session = JSON.parse(reply);
       console.log("Client: " + session.displayName + " connected to room " + session.roomid);
-      SendMessage(session.roomid, {data: session.displayName + " connected to room."});
+      SendMessage(session.roomid, {type: 'userUpdate', action: 'join', user: session.userid, displayName: session.displayName});
       redsub.subscribe('room'+session.roomid);
       if(session.roomid in rooms){
         rooms[session.roomid][user.sid] = user;
@@ -86,7 +86,12 @@ function onUserConnected(user){
       user.displayName = session.displayName;
       user.roomid = session.roomid;
       user.userid = session.userid;
-      RoomManager.UserJoin(user.roomid, user.userid);
+      RoomManager.UserJoin(user.roomid, user.userid, user.displayName, function(){
+        RoomManager.RetrieveRoomDetails(user.roomid, function(roomdetails){
+          var data = {type: 'RoomInit', users: roomdetails.users, chatlog: roomdetails.chatlog};
+          user.socket.send(JSON.stringify(data));
+        });
+      });
       RoomManager.GetObjects(user.roomid, function(roomObjs){
         var newObjMsg = {type: "createObject", objects: []};
         for(newObj of roomObjs){
@@ -107,7 +112,7 @@ function onUserDisconnected(user){
     if(reply){
       var session = JSON.parse(reply);
       console.log("Client: " + session.displayName + " disconnected from room " + session.roomid);
-      SendMessage(session.roomid, {data: session.displayName + " disconnected from room."});
+      SendMessage(session.roomid, {type: 'userUpdate', action: 'leave', user: session.userid, displayName: session.displayName});
       delete rooms[session.roomid][user.sid];
       if(Object.keys(rooms[session.roomid]).length == 0){
         delete rooms[session.roomid];

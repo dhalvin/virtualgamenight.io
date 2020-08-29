@@ -1,4 +1,5 @@
 //var currentDraggable = null;
+const RoomInfo = {users: {}, chatlog: []};
 var dragOffset = null;
 var currentColor = '#000000';
 const CardSize = {w: 120, h: 180};
@@ -478,12 +479,58 @@ ws.onmessage = function(e) {
     gsap.to(ClientObjectCollection[data.uid], {duration: data.moveData.duration, left: data.moveData.leftPre + clientLoc.x, top: data.moveData.topPre + clientLoc.y, rotation: data.moveData.rotation, ease: data.moveData.ease});
   }
   if(data.type == "userUpdate"){
-    var userDiv = document.getElementById('connectedUsers');
-    var newInner = '';
-    for(user of data.users){
-      newInner += '<p>'+user+'</p>';
+    if(data.action == "join"){
+      RoomInfo.users[data.user] = data.displayName; 
+      $('#userList').append('<li id=userstatus'+data.user+' class="nav-item">'+RoomInfo.users[data.user]+'</li>');
+      var $chatBox = $('#chatBox');
+      $chatBox.append(data.displayName  + ' has joined the room\n');
+      $chatBox.scrollTop($chatBox[0].scrollHeight);
     }
-    userDiv.innerHTML = newInner;
+    else if(data.action == "leave"){
+      $('#userstatus'+data.user).remove();
+      var $chatBox = $('#chatBox');
+      $chatBox.append(data.displayName  + ' has left the room\n');
+      $chatBox.scrollTop($chatBox[0].scrollHeight);
+    }
   }
-
+  if(data.type == "msgRequest"){
+    var $chatBox = $('#chatBox');
+    $chatBox.append(RoomInfo.users[data.user]  + ': ' + data.msg + '\n');
+    $chatBox.scrollTop($chatBox[0].scrollHeight);
+  }
+  if(data.type == "RoomInit"){
+    RoomInfo.users = data.users;
+    RoomInfo.chatlog = data.chatlog;
+    var $userList = $('#userList');
+    for(user in RoomInfo.users){
+      $userList.append('<li id=userstatus'+user+'class="nav-item">'+RoomInfo.users[user]+'</li>');
+    }
+    var $chatBox = $('#chatBox');
+    for(msg of RoomInfo.chatlog){
+      $chatBox.append(RoomInfo.users[msg.user] + ': ' + msg.msg + '\n');
+    }
+    $chatBox.scrollTop($chatBox[0].scrollHeight);
+  }
 };
+
+function SendChatMessage(message){
+  ws.send(JSON.stringify({type: 'msgRequest', msg: message, updateSelf: true}));
+}
+
+$('#button-chatSend').on('click', function(){
+  var msg = $('#chatInput').val();
+  if(msg){
+    SendChatMessage(msg);
+    $('#chatInput').val('');
+  }
+});
+
+$('#chatInput').bind('keypress', function(e){
+  if(e.keyCode==13){
+    var msg = $('#chatInput').val();
+    if(msg){
+      SendChatMessage(msg);
+      $('#chatInput').val('');
+    }
+  }
+});

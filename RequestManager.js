@@ -1,5 +1,6 @@
 const SyncObjectFactory = require('./SyncableObjects'),
 ObjectStore = require('./ObjectStore'),
+RoomManager = require('./RoomManager'),
 WSServer = require('./ws-app'),
 { nanoid } = require('nanoid');
 
@@ -110,6 +111,13 @@ module.exports.onDeleteRequest = function(data, user){
   });
 }
 
+module.exports.onMessageRequest = function(data, user){
+  data.time  = new Date().getTime();
+  data.user = user.userid;
+  RoomManager.AppendChat(user.roomid, {'user': user.userid, 'time': data.time, 'msg': data.msg});
+  WSServer.SendMessage(user.roomid, data);
+}
+
 module.exports.PushUpdate = function(roomid, data){
   data.type = 'updateObject';
   WSServer.SendMessage(roomid, data);
@@ -120,5 +128,6 @@ module.exports.onRequest = {
   "pushUpdateRequest": module.exports.onPushUpdateRequest,
   "createRequest": module.exports.onCreateRequest,
   "deleteRequest": module.exports.onDeleteRequest,
-  "pullUpdateRequest": module.exports.onPullUpdateRequest
+  "pullUpdateRequest": module.exports.onPullUpdateRequest,
+  "msgRequest": module.exports.onMessageRequest
 }

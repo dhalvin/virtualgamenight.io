@@ -1,9 +1,10 @@
   
-<div id="title" class="jumbotron">
+<div id="title" class="jumbotron pb-3">
   <h1>Virtual Game Night</h1>
-  <p class="text-muted"></p>{{room-info}}</p>
+  <p class="text-muted">{{quip}}</p>
+  <p class="text-muted">	&#169; 2020 David Horning</p>
 </div>
-<div class="container">
+<div class="container-flex text-light px-4">
   <h2>Joining Room: {{roomid}}</h2>
   <form action="app" method="post">
     <input name="roomid" type="hidden" value="{{roomid}}">

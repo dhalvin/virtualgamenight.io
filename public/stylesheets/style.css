@@ -130,3 +130,7 @@ html {
 .overflowAuto {
   overflow: auto;
 }
+
+footer {
+  bottom: 0;
+}

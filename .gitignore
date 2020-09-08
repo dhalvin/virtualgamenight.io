@@ -1,5 +1,9 @@
 node_modules/*
 package-lock.json
+.vscode/*
+.env
+package-lock.json
+start.sh
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml

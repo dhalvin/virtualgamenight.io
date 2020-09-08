@@ -91,13 +91,13 @@ function onUserConnected(user){
           var data = {type: 'RoomInit', users: roomdetails.users, chatlog: roomdetails.chatlog};
           user.socket.send(JSON.stringify(data));
         });
-      });
-      RoomManager.GetObjects(user.roomid, function(roomObjs){
-        var newObjMsg = {type: "createObject", objects: []};
-        for(newObj of roomObjs){
-          newObjMsg.objects.push({uid: newObj.uid, objType: newObj.objType, objData: newObj.objData, noSave: SyncObjectFactory.NoSave[newObj.objType]});
-        }
-        user.socket.send(JSON.stringify(newObjMsg));
+        RoomManager.GetObjects(user.roomid, function(roomObjs){
+          var newObjMsg = {type: "createObject", objects: []};
+          for(newObj of roomObjs){
+            newObjMsg.objects.push({uid: newObj.uid, objType: newObj.objType, objData: newObj.objData, noSave: SyncObjectFactory.NoSave[newObj.objType]});
+          }
+          user.socket.send(JSON.stringify(newObjMsg));
+        });
       });
     }
     if(err){

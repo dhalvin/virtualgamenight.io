@@ -88,7 +88,7 @@ function onUserConnected(user){
       user.userid = session.userid;
       RoomManager.UserJoin(user.roomid, user.userid, user.displayName, function(){
         RoomManager.RetrieveRoomDetails(user.roomid, function(roomdetails){
-          var data = {type: 'RoomInit', users: roomdetails.users, chatlog: roomdetails.chatlog};
+          var data = {type: 'RoomInit', users: roomdetails.users, activeUsers: roomdetails.activeUsers, chatlog: roomdetails.chatlog};
           user.socket.send(JSON.stringify(data));
         });
         RoomManager.GetObjects(user.roomid, function(roomObjs){

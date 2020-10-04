@@ -17,7 +17,7 @@
         </h6>
       </div>
       <div id="collapseChat" class="collapse show" aria-labelledby="headingChat">
-        <div class="card-body overflowAuto">
+        <div class="card-body overflow-auto">
           <textarea id="chatBox" class="form-control" readonly></textarea>
           <div class="input-group mb-3">
             <input id="chatInput" type="text" class="form-control" placeholder="Message">
@@ -35,7 +35,7 @@
         </h6>
       </div>
       <div id="collapseUser" class="collapse show" aria-labelledby="headingUser">
-        <div class="card-body overflowAuto">
+        <div class="card-body overflow-auto">
           <ul id="userList" class="nav flex-column">
           </ul>
         </div>
@@ -43,26 +43,12 @@
     </div>
   </nav>
 </div>
-<div class="dropdown-menu" id="stack-menu" data-reference="parent">
-  <a class="dropdown-item" href="#" id="stack-shuffle">Shuffle</a>
-  <a class="dropdown-item" href="#" id="stack-deal">Deal</a>
-  <a class="dropdown-item" href="#" id="stack-flip">Flip</a>
-  <a class="dropdown-item" href="#" id="stack-split">Split</a>
-  <a class="dropdown-item" href="#" id="stack-explode">Explode</a>
-  <div class="dropdown-divider"></div>
-  <a class="dropdown-item" href="#" id="stack-fan-down">Fan Down</a>
-  <a class="dropdown-item" href="#" id="stack-fan-right">Fan Right</a>
-  <a class="dropdown-item" href="#" id="stack-fan-out">Fan Out</a>
-  <a class="dropdown-item" href="#" id="stack-no-fan">No Fan</a>
-</div>
-<div class="dropdown-menu" id="deck-menu" data-reference="parent">
-  <a class="dropdown-item" href="#" id="deck-recall">Recall Cards</a>
-</div>
-<div class="dropdown-menu" id="back-menu" data-reference="parent">
-  <a class="dropdown-item" href="#" id="create-deck">Create New Deck</a>
-  <a class="dropdown-item" href="#" id="reset-room">Reset Room</a>
-</div>
+<div class="dropdown-menu" id="context-menu" data-reference="parent"></div>
 <script>
+  //156-62
+  document.getElementById('chatBox').addEventListener('resize', function(e){
+    alert('boop');
+  });
   var chatTween = gsap.to('#collapseChat', {height: 0, duration: 0.35});
   var userTween = gsap.to('#collapseUser', {height: 0, duration: 0.35});
   chatTween.progress(0).pause();
@@ -98,5 +84,9 @@
   });
 </script>
 <script>const ws = new WebSocket("ws://{{serverAddress}}/"); let MYUSERID = "{{userid}}";</script>
+<script src="javascripts/Movable.js"></script>
+<script src="javascripts/Card.js"></script>
+<script src="javascripts/CardStack.js"></script>
+<script src="javascripts/Deck.js"></script>
 <script src="javascripts/ClientObjects.js"></script>
 <script src="javascripts/site.js"></script>

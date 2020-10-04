@@ -12,7 +12,7 @@ redis.add_command('JSON.DEL');
 module.exports.LoadRoom = function(roomid, callback){
   dbCon.query('SELECT * FROM RoomItems WHERE RoomItems.roomid = ?; SELECT * FROM UserRoom WHERE UserRoom.roomid = ?; SELECT * FROM Chat WHERE roomid = ? ORDER BY sentTime', [roomid, roomid, roomid], function(error, results, fields){
     if(!error){
-      room = {users: {}, objects: {}, chatlog: []};
+      room = {users: {}, activeUsers: {}, objects: {}, chatlog: []};
       for(item of results[0]){
         room.objects[item.itemid] = 1;
         redcli.send_command('JSON.SET', [roomid+item.itemid, '.', "{\"roomid\":\""+roomid+"\",\"uid\":\""+item.itemid+"\",\"objType\":\""+item.type+"\",\"objData\":"+item.data+"}"], function(){});
@@ -38,29 +38,33 @@ module.exports.LoadRoom = function(roomid, callback){
     }
   });
 };
-module.exports.UnloadRoom = function(roomid, callback){
-  dbCon.query('REPLACE INTO Room (id, expire) VALUES (?, ?)', [roomid, new Date().getTime() + 604800000], function(error, result, fields){
-    module.exports.RetrieveRoomDetails(roomid, function(room){
-      for(user in room.users){
-        dbCon.query('REPLACE INTO UserRoom (roomid, userid, displayName) VALUES (?, ?, ?)', [roomid, user, room.users[user]]);
-      }
-      for(chat of room.chatlog){
-        dbCon.query('INSERT IGNORE INTO Chat (roomid, userid, sentTime, msg) VALUES (?, ?, ?, ?)', [roomid, chat.user, chat.time, chat.msg]);
-      }
-      redcli.expire('room:'+roomid, 30);
-      module.exports.GetObjects(roomid, function(objs){
-        for(obj of objs){
-          let objUid = obj.uid;
-          dbCon.query('REPLACE INTO RoomItems (roomid, itemid, type, data) VALUES (?, ?, ?, ?)', [roomid, obj.uid, obj.objType, JSON.stringify(obj.objData)], function(error, result, fields){
-            redcli.expire(roomid+objUid, 30);
+module.exports.UnloadRoom = function(roomid, forceUnload=false, callback){
+  redcli.send_command('JSON.OBJLEN', ['room:'+roomid, 'activeUsers'], function(err, reply){
+    if(forceUnload || reply === 0){
+      dbCon.query('REPLACE INTO Room (id, expire) VALUES (?, ?)', [roomid, new Date().getTime() + 604800000], function(error, result, fields){
+        module.exports.RetrieveRoomDetails(roomid, function(room){
+          for(user in room.users){
+            dbCon.query('REPLACE INTO UserRoom (roomid, userid, displayName) VALUES (?, ?, ?)', [roomid, user, room.users[user]]);
+          }
+          for(chat of room.chatlog){
+            dbCon.query('INSERT IGNORE INTO Chat (roomid, userid, sentTime, msg) VALUES (?, ?, ?, ?)', [roomid, chat.user, chat.time, chat.msg]);
+          }
+          redcli.expire('room:'+roomid, 30);
+          module.exports.GetObjects(roomid, function(objs){
+            for(obj of objs){
+              let objUid = obj.uid;
+              dbCon.query('REPLACE INTO RoomItems (roomid, itemid, type, data) VALUES (?, ?, ?, ?)', [roomid, obj.uid, obj.objType, JSON.stringify(obj.objData)], function(error, result, fields){
+                redcli.expire(roomid+objUid, 30);
+              });
+            }
           });
-        }
+        })
       });
-    })
+    }
   });
 };
 module.exports.CreateRoom = function(roomid, callback){
-  redcli.send_command('JSON.SET', ['room:'+roomid, '.', JSON.stringify({'users': {}, 'objects': {}, 'chatlog': []}), 'NX'], function(err, reply){
+  redcli.send_command('JSON.SET', ['room:'+roomid, '.', JSON.stringify({'users': {}, 'activeUsers': {}, 'objects': {}, 'chatlog': []}), 'NX'], function(err, reply){
     if(err){
       console.log(err);
     }
@@ -93,26 +97,29 @@ module.exports.UserJoin = function(roomid, userid, displayName, callback){
   redcli.send_command('JSON.TYPE',['room:'+roomid],function(err, reply){
     if(reply === null){
       module.exports.LoadRoom(roomid, function(){
+        redcli.send_command('JSON.SET', ['room:'+roomid, 'activeUsers["'+userid+'"]', JSON.stringify(displayName)]);
         redcli.send_command('JSON.SET', ['room:'+roomid, 'users["'+userid+'"]', JSON.stringify(displayName)], callback);
       });
     }
     else{
+      redcli.persist('room:'+roomid);
+      redcli.send_command('JSON.SET', ['room:'+roomid, 'activeUsers["'+userid+'"]', JSON.stringify(displayName)]);
       redcli.send_command('JSON.SET', ['room:'+roomid, 'users["'+userid+'"]', JSON.stringify(displayName)], callback);
     }
   });
 };
 module.exports.UserLeave = function(roomid, userid){
-  redcli.send_command('JSON.DEL', ['room:'+roomid, 'users["'+userid+'"]'], function(){
-    redcli.send_command('JSON.OBJLEN', ['room:'+roomid, 'users'], function(err, reply){
+  redcli.send_command('JSON.DEL', ['room:'+roomid, 'activeUsers["'+userid+'"]'], function(){
+    redcli.send_command('JSON.OBJLEN', ['room:'+roomid, 'activeUsers'], function(err, reply){
       if(reply === 0){
-        module.exports.UnloadRoom(roomid);
+        setTimeout(module.exports.UnloadRoom, 30000, roomid);
       }
     });
   });
 };
 
 module.exports.GetUsers = function(roomid, callback){
-  redcli.send_command('JSON.GET', ['room:'+roomid, 'users'], function(err, reply){
+  redcli.send_command('JSON.GET', ['room:'+roomid, 'users', 'activeUsers'], function(err, reply){
     if(err){
       console.log(err);
     }
@@ -133,8 +140,8 @@ module.exports.RetrieveRoomDetails = function(roomid, callback){
       console.log(err);
       callback(0);
     }
-    module.exports.GetUsers(roomid, function(users){
-      callback({users: users, chatlog: JSON.parse(reply)})
+    module.exports.GetUsers(roomid, function(usersResult){
+      callback({users: usersResult.users, activeUsers: usersResult.activeUsers, chatlog: JSON.parse(reply)});
     });
   });
 }
@@ -148,6 +155,7 @@ module.exports.GetObjects = function(roomid, callback){
       if(reply.length > 0){
         for(var i = 0; i < reply.length; i++){
           reply[i] = roomid+reply[i];
+          redcli.persist(reply[i]);
         }
         redcli.send_command('JSON.MGET', reply.concat(['.']), function(err1, reply1){
           for(var i = 0; i < reply1.length; i++){

@@ -55,7 +55,8 @@ module.exports.onPushUpdateRequest = function(data, user){
           }
         }
         else{
-          delete data.objData[attr];
+          data.objData[attr] = ObjProps['objData.'+attr];
+          //delete data.objData[attr];
         }
       }
       //Add in requested nosave fields

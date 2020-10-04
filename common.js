@@ -1,1 +1,1 @@
-module.exports.SECRET = 'BOYOYOUBETTERCHANGETHISLATER';
+module.exports.SECRET = process.env.SESS_SECRET;

@@ -46,6 +46,9 @@ function setup() {
     }
   });
 
+  app.get('/test', function(req, res){
+    res.render('test', {title: "Test", scripts: '<script src="javascripts/test.js"></script>'});
+  })
   app.get('/join', function(req, res){
     //If we are already in the room, don't join again
     if('roomid' in req.session){
@@ -58,7 +61,7 @@ function setup() {
   });
 
   app.post('/join', [
-    validator.check('roomid').trim().isLength({min:2}).withMessage('Cannot be empty...').bail().matches('^[A-Za-z0-9_-]{5}$').withMessage('Invalid Room Code')
+    validator.check('roomid').trim().isLength({min:1}).withMessage('Cannot be empty...').matches('^[A-Za-z0-9_-]{5}$').withMessage('Invalid Room Code')
   ], function(req, res){
     //Render the page with any errors that exist
     if('errors' in req.session){
@@ -121,7 +124,7 @@ function setup() {
   });
 
   app.post('/app', [
-    validator.check('roomid').trim().isLength({min:1}).withMessage('Room Code Cannot be empty...').bail().matches('^[A-Za-z0-9_-]{5}$').withMessage('Invalid Room Code'),
+    validator.check('roomid').trim().isLength({min:1}).withMessage('Room Code Cannot be empty...').matches('^[A-Za-z0-9_-]{5}$').withMessage('Invalid Room Code'),
     validator.check('displayName').trim().escape().isLength({min:1}).withMessage('Display Name Cannot be empty...')
   ], function(req, res){
     const errors = validator.validationResult(req);

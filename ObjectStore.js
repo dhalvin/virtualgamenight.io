@@ -44,9 +44,6 @@ module.exports.SetObjectProperties = function(roomid, objectid, properties){
 }
 
 module.exports.AddObject = function(roomid, object, callback){
-  if(object.objType == 'CardStack'){
-    console.log('y');
-  }
   RoomManager.RegisterObject(roomid, object.uid);
   redcli.send_command('JSON.SET', [roomid+object.uid, '.', JSON.stringify(object)], function(){
     callback();

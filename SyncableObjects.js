@@ -131,18 +131,7 @@ const InitializeObject = {
 }
 DeleteObject = {
   Card : function(roomid, uid, callback){callback()},
-  CardStack : function(roomid, uid, callback){
-    ObjectStore.GetObjectProperties(roomid, uid, ['objData.cards'], function(props){
-      for(card of props['objData.cards']){
-        ObjectStore.SetObjectProperties(roomid, card, {'objData.parentObj': null, 'objData.moving': false, 'objData.locked': false, 'objData.releaseUser': true});
-        data = {uid: card, objData: {parentObj: null, moving: false, locked: false, releaseUser: true}};
-        data.user = null;
-        data.noSave = module.exports.NoSave['Card'];
-        Requests.PushUpdate(roomid, data);
-      }
-      callback();
-    });
-  },
+  CardStack : function(roomid, uid, callback){callback()},
   Deck : function(roomid, uid, callback){callback()}
 }
 
@@ -154,7 +143,6 @@ module.exports.DeleteObject = function(roomid, uid, callback){
 function AssignObjData(target, source){
   for(attribute in source){
     if(source[attribute] && typeof source[attribute] == 'object'){
-      //console.log(attribute);
       Object.assign(target[attribute], source[attribute]);
     }
     else{

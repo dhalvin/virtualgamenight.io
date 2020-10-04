@@ -40,14 +40,19 @@ VGNIO.Deck = new function(){
         }
       }
     });
-    obj.removeCardStack = function(){
+    obj.removeCardStack = function(sendUpdate=false){
+      var updates = [];
       var cardStack = ClientObjectCollection[VGNIO.GetObjAttr(obj.uid, 'cardStack')];
       var cardStackNode = document.getElementById(cardStack.uid);
       VGNIO.UnparentClientObject(cardStackNode);
       VGNIO.SetObjAttr(obj.uid, 'cardStack', null);
-      pushUpdateObjectRequest(obj.uid, {cardStack: null});
       VGNIO.SetObjAttr(cardStack.uid, 'parentObj', null);
-      pushUpdateObjectRequest(cardStack.uid, {pos: VGNIO.GetObjAttr(cardStack.uid, 'pos'), parentObj: null});
+      updates.push(pushUpdateObjectRequest(obj.uid, {cardStack: null}));
+      updates.push(pushUpdateObjectRequest(cardStack.uid, {pos: VGNIO.GetObjAttr(cardStack.uid, 'pos'), parentObj: null}));
+      if(sendUpdate){
+        SendRequests(updates);
+      }
+      return updates;
     };
     obj.attachCardStack = function(cardStackUID){
       cardStack = ClientObjectCollection[cardStackUID];
@@ -55,9 +60,11 @@ VGNIO.Deck = new function(){
       MoveObject(cardStack, {x: 0, y: 0});
       //SnapObject(cardStack, obj);
       VGNIO.SetObjAttr(obj.uid, 'cardStack', cardStackUID);
-      pushUpdateObjectRequest(obj.uid, {cardStack: cardStackUID});
       VGNIO.SetObjAttr(cardStackUID, 'parentObj', obj.uid);
-      pushUpdateObjectRequest(cardStackUID, {pos: VGNIO.GetObjAttr(cardStackUID, 'pos'), parentObj: obj.uid});
+      SendRequests([
+        pushUpdateObjectRequest(obj.uid, {cardStack: cardStackUID}), 
+        pushUpdateObjectRequest(cardStackUID, {pos: VGNIO.GetObjAttr(cardStackUID, 'pos'), parentObj: obj.uid})
+      ]);
     };
     //obj.addEventListener('contextmenu', function(event){
     if(ClientObjectCollection[VGNIO.GetObjAttr(obj.uid, 'cardStack')]){
@@ -97,53 +104,7 @@ VGNIO.Deck = new function(){
         items: function(){
           return [
             {text: "Recall Cards", action: function(event){
-              var cardsInDeck = VGNIO.GetObjAttr(event.target.id, 'cards');
-              var deckBounds = event.target.getBoundingClientRect();
-
-              var tl = gsap.timeline({delay: 0.25, onComplete: function(){
-                var deckStack = VGNIO.GetObjAttr(event.target.id, 'cardStack');
-                if(deckStack && deckStack in ObjectCollection){
-                  for(card of cardsInDeck){
-                    if(!VGNIO.GetObjAttr(deckStack, 'cards').includes(card)){
-                      ClientObjectCollection[deckStack].addCard(card);
-                    }
-                  }
-                }
-                else{
-                  createObjectRequest('CardStack', {
-                    pos: ObjectCollection[event.target.id].objData.pos,
-                    cards: cardsInDeck,
-                    parentObj: event.target.id
-                  });
-                }
-              }});
-              tl.pause();
-              var otherStacks = {};
-              var deckStack = VGNIO.GetObjAttr(event.target.id, 'cardStack');
-              for(card of cardsInDeck){
-                //ClientObjectCollection[card].zIndex += event.target.zIndex;
-                //let cardUID = card;
-                if(!deckStack || !VGNIO.GetObjAttr(deckStack, 'cards').includes(card)){
-                  var cardParent = VGNIO.GetObjAttr(card, 'parentObj');
-                  if(cardParent && cardParent != deckStack){
-                    if(cardParent in otherStacks){
-                      otherStacks[cardParent].push(card);
-                    }
-                    else{
-                      otherStacks[cardParent] = [card];
-                    }
-                  }
-                  tl.to(ClientObjectCollection[card], {duration: 1, ease: 'power3', x: deckBounds.x - VGNIO.Room.Bounds.x, y: deckBounds.y - VGNIO.Room.Bounds.y, onStart: function(cardUID){
-                    var serverLoc = clientToRoomPosition(deckBounds);
-                    moveObjectRequest(cardUID, {duration: 1, xPre: '', x: serverLoc.x, yPre: '', y: serverLoc.y, rotation: 0, ease: 'power3'});
-                  }, onStartParams: [card]}, '<');
-                }
-              }
-              for(otherStack in otherStacks){
-                ClientObjectCollection[otherStack].removeCards(otherStacks[otherStack]);
-              }
-              tl.set({}, {}, '>0.5');
-              tl.resume();
+              RecallCards(event.target.id);
             }}
           ]
         }
@@ -151,3 +112,56 @@ VGNIO.Deck = new function(){
     }
   }
 };
+
+function RecallCards(deck){
+  var cardsInDeck = VGNIO.GetObjAttr(deck, 'cards');
+  var deckObj = document.getElementById(deck);
+  var deckBounds = deckObj.getBoundingClientRect();
+  var deckStack = VGNIO.GetObjAttr(deck, 'cardStack');
+
+  var tl = gsap.timeline({delay: 0.25, onComplete: function(){
+    var requests = [];
+    if(deckStack && deckStack in ObjectCollection){
+      for(card of cardsInDeck){
+        if(!VGNIO.GetObjAttr(deckStack, 'cards').includes(card)){
+          requests.concat(AddCard(deckStack, card, cardsInDeck.length));
+        }
+      }
+      SendRequests(requests);
+    }
+    else{
+      SendRequests([createObjectRequest('CardStack', {
+        pos: VGNIO.GetObjAttr(deck, 'pos'),
+        cards: cardsInDeck,
+        parentObj: deck
+      })]);
+    }
+  }});
+  tl.pause();
+  var otherStacks = {};
+  var requests = [];
+  for(card of cardsInDeck){
+    if(!deckStack || !VGNIO.GetObjAttr(deckStack, 'cards').includes(card)){
+      var cardParent = VGNIO.GetObjAttr(card, 'parentObj');
+      if(cardParent && cardParent != deckStack){
+        if(cardParent in otherStacks){
+          otherStacks[cardParent].push(card);
+        }
+        else{
+          otherStacks[cardParent] = [card];
+        }
+      }
+    }
+  }
+  for(otherStack in otherStacks){
+    requests.concat(RemoveCards(otherStack, otherStacks[otherStack]));
+  }
+  var serverLoc = clientToRoomPosition(deckBounds);
+  for(card of cardsInDeck){
+    requests.push(moveObjectRequest(card, {duration: 1, xPre: '', x: serverLoc.x, yPre: '', y: serverLoc.y, rotation: 0, ease: 'power3'}));
+    tl.to(ClientObjectCollection[card], {duration: 1, ease: 'power3', x: deckBounds.x - VGNIO.Room.Bounds.x, y: deckBounds.y - VGNIO.Room.Bounds.y}, '<');
+  }
+  tl.set({}, {}, '>0.5');
+  tl.resume();
+  SendRequests(requests);
+}

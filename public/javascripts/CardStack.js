@@ -47,70 +47,6 @@ VGNIO.CardStack = new function(){
       obj.countText.nodeValue = cards.length;
       ArrangeStack(obj, VGNIO.GetObjAttr(obj.uid, 'arrangement'));
     }
-    obj.addCard = function(card, index){
-      var cards = VGNIO.GetObjAttr(obj.uid, 'cards');
-      //cards.push(card);
-      cards.splice(index, 0, card);
-      var cardObj =  ClientObjectCollection[card];    
-      obj.appendChild(cardObj);
-      SnapObject(cardObj, obj.cardSlot);
-      var cardsLen = cards.length;
-      //VGNIO.GetObjAttr(cardObj.uid, 'pos').z = cardsLen - 1;
-      VGNIO.SetObjAttr(cardObj.uid, 'parentObj', obj.uid);
-      cardObj.style.zIndex = index;
-      //obj.cardSlot.style.zIndex = cardsLen;
-      obj.countText.nodeValue = cardsLen;
-      for(var i = index; i < cardsLen; i++){
-        ClientObjectCollection[cards[i]].style.zIndex = i;
-        VGNIO.GetObjAttr(cards[i], 'pos').z = i;
-        //pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], parentObj: {value: obj.uid}});
-        pushUpdateObjectRequest(card, {parentObj: obj.uid});
-      }
-      //pushUpdateObjectRequest(card, {parentObj: {value: obj.uid}});
-      pushUpdateObjectRequest(obj.uid, {cards: cards});
-      ArrangeStack(obj, VGNIO.GetObjAttr(obj.uid, 'arrangement'));
-    };
-    obj.removeCards = function(removedCards, localOnly=false, newParent=null){
-      var cards = VGNIO.GetObjAttr(obj.uid, 'cards');
-      for(card of removedCards){
-        var index = cards.indexOf(card);
-        if (index !== -1){
-          cards.splice(index, 1);
-          var cardObj =  ClientObjectCollection[card];
-          obj.countText.nodeValue = cards.length;
-          VGNIO.UnparentClientObject(cardObj);
-          VGNIO.SetObjAttr(cardObj.uid, 'parentObj', newParent);
-          if(!localOnly){
-            pushUpdateObjectRequest(card, {parentObj: newParent, releaseUser: true});
-          }
-        }
-        else{
-          console.log("Tried to remove card from stack that was not in stack");
-        } 
-      }
-      if(cards.length < 2 && !VGNIO.GetObjAttr(obj.uid, 'parentObj') || cards.length < 1 && VGNIO.GetObjAttr(obj.uid, 'parentObj')){
-        for(card of cards){
-          $('#'+card).show();
-          if(obj.contains(ClientObjectCollection[card])){
-            var cardObj =  ClientObjectCollection[card];
-            VGNIO.UnparentClientObject(cardObj);
-            pushUpdateObjectRequest(card, {parentObj: newParent, releaseUser: true});
-          }
-        }
-        var parentObj = VGNIO.GetObjAttr(obj.uid, 'parentObj');
-        if(parentObj){
-          VGNIO.SetObjAttr(parentObj, 'cardStack', null);
-        }
-        deleteObjectRequest(obj.uid);
-      }
-      else{
-        pushUpdateObjectRequest(obj.uid, {cards: cards});
-        ArrangeStack(obj, VGNIO.GetObjAttr(obj.uid, 'arrangement'));
-      }
-    };
-    obj.removeCard = function(card, localOnly=false, newParent=null){
-      obj.removeCards([card], localOnly, newParent);
-    };
 
     obj.updateFunctions.push(function(updateData){
       if('cards' in updateData){
@@ -149,7 +85,6 @@ VGNIO.CardStack = new function(){
           $('#'+card).show();
           var cardObj =  ClientObjectCollection[card];
           UnparentClientObject(cardObj);
-          //pushUpdateObjectRequest(card, {pos: ObjectCollection[card].objData['pos'], parentObj: null, moving: false, locked: false, releaseUser: true}, true);
         }
       }
       var parentObj = ObjectCollection[obj.uid].get('parentObj');
@@ -187,7 +122,7 @@ VGNIO.CardStack = new function(){
 
   this.OnDragStart = function(event){
     if(VGNIO.GetObjAttr(event.target.id, 'parentObj')){
-      ClientObjectCollection[VGNIO.GetObjAttr(event.target.id, 'parentObj')].removeCardStack();
+      ClientObjectCollection[VGNIO.GetObjAttr(event.target.id, 'parentObj')].removeCardStack(true);
       event.update();
     }
   }
@@ -209,7 +144,7 @@ VGNIO.CardStack = new function(){
 
         }
         else{
-          event.target.addCard(event.snappedObj.id, 0);
+          AddCard(event.target.id, event.snappedObj.id, 0, true);
         }
       }
       else if(snappedType == 'Deck'){
@@ -230,14 +165,14 @@ VGNIO.CardStack = new function(){
         items: function(){
           return [
             {text: "Flip Stack", action: function(event){
-              FlipStack(ClientObjectCollection[event.target.id]);
+              FlipStack(event.target.id);
             }},
             {text: "Shuffle", action: function(event){
               var shuffledCards = shuffleArray(VGNIO.GetObjAttr(event.target.id, 'cards'));
-              pushUpdateObjectRequest(event.target.id, {arrangement: 'shuffle', cards: shuffledCards});
+              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'shuffle', cards: shuffledCards})]);
               ArrangeStack(event.target, 'shuffle', shuffledCards, function(){
                 var arrangement = VGNIO.GetObjAttr(event.target.id, 'arrangement');
-                pushUpdateObjectRequest(event.target.id, {arrangement: arrangement});
+                SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: arrangement})]);
                 ArrangeStack(event.target, arrangement);
               });
             }},
@@ -247,22 +182,22 @@ VGNIO.CardStack = new function(){
             }},
             {text: "Fan Right", action: function(event){
               VGNIO.SetObjAttr(event.target.id, 'arrangement', 'fanright');
-              pushUpdateObjectRequest(event.target.id, {arrangement: 'fanright'});
+              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'fanright'})]);
               ArrangeStack(event.target, 'fanright');
             }},
             {text: "Fan Down", action: function(event){
               VGNIO.SetObjAttr(event.target.id, 'arrangement', 'fandown');
-              pushUpdateObjectRequest(event.target.id, {arrangement: 'fandown'});
+              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'fandown'})]);
               ArrangeStack(event.target, 'fandown');
             }},
             {text: "Fan Out", action: function(event){
               VGNIO.SetObjAttr(event.target.id, 'arrangement', 'fanout');
-              pushUpdateObjectRequest(event.target.id, {arrangement: 'fanout'});
+              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'fanout'})]);
               ArrangeStack(event.target, 'fanout');
             }},
             {text: "Neatly Stack", action: function(event){
               VGNIO.SetObjAttr(event.target.id, 'arrangement', 'standard');
-              pushUpdateObjectRequest(event.target.id, {arrangement: 'standard'});
+              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'standard'})]);
               ArrangeStack(event.target, 'standard');
             }}
           ];
@@ -286,10 +221,11 @@ VGNIO.CardStack = new function(){
   }
 };
 function SplitStack(stack, pos, index=Math.floor(VGNIO.GetObjAttr(stack, 'cards').length/2)){
+  var requests = [];
   var stackObj = document.getElementById(stack);
   var cards = VGNIO.GetObjAttr(stack, 'cards');
   var newCards = cards.slice(index);
-  stackObj.removeCards(newCards, true);
+  requests.concat(RemoveCards(stack, newCards));
 
   if(newCards.length >= 2){
     var newStackData = {
@@ -297,23 +233,25 @@ function SplitStack(stack, pos, index=Math.floor(VGNIO.GetObjAttr(stack, 'cards'
       cards: newCards,
       arrangement: 'standard'
     };
-    createObjectRequest('CardStack', newStackData);
+    requests.push(createObjectRequest('CardStack', newStackData));
   }
   else{
     for(card of newCards){
       MoveObject(document.getElementById(card), pos);
-      pushUpdateObjectRequest(card, {parentObj: null, releaseUser: true});
+      requests.push(pushUpdateObjectRequest(card, {pos: pos}));
     }
   }
-  pushUpdateObjectRequest(stack, {cards: cards});
+  requests.push(pushUpdateObjectRequest(stack, {cards: cards}));
+  SendRequests(requests);
   ArrangeStack(stackObj, VGNIO.GetObjAttr(stack, 'arrangement'));
 }
 
 function MergeStacks(target, source, index=VGNIO.GetObjAttr(target, 'cards').length){
+  var updates = [];
   var targetObj = document.getElementById(target);
   var targetCards = VGNIO.GetObjAttr(target, 'cards');
   var sourceCards = VGNIO.GetObjAttr(source, 'cards').slice(0);
-  document.getElementById(source).removeCards(sourceCards, false, target);
+  updates.concat(RemoveCards(source, sourceCards, false));
   sourceCards = sourceCards.concat(targetCards.splice(index, targetCards.length - index));
   targetCards = targetCards.concat(sourceCards);
   targetObj.countText.nodeValue = targetCards.length;
@@ -324,10 +262,11 @@ function MergeStacks(target, source, index=VGNIO.GetObjAttr(target, 'cards').len
     SnapObject(cardObj, targetObj.cardSlot);
     cardObj.style.zIndex = i;
     VGNIO.SetObjAttr(targetCards[i], 'parentObj', target);
-    pushUpdateObjectRequest(targetCards[i], {pos: VGNIO.GetObjAttr(targetCards[i], 'pos'), parentObj: target});
+    updates.push(pushUpdateObjectRequest(targetCards[i], {pos: VGNIO.GetObjAttr(targetCards[i], 'pos'), parentObj: target}));
   }
   VGNIO.SetObjAttr(target, 'cards', targetCards);
-  pushUpdateObjectRequest(target, {cards: targetCards});
+  updates.push(pushUpdateObjectRequest(target, {cards: targetCards}));
+  SendRequests(updates);
   ArrangeStack(targetObj, VGNIO.GetObjAttr(target, 'arrangement'));
 }
 
@@ -335,13 +274,14 @@ function ExplodeStack(stack){
 
 }
 
-function FlipStack(cardStackObj){
-  var cards = VGNIO.GetObjAttr(cardStackObj.uid, 'cards');
+function FlipStack(stack){
+  var cards = VGNIO.GetObjAttr(stack, 'cards');
   var tl = gsap.timeline();
   tl.pause();
   var duration = .1;
   for(var i = 0; i < cards.length; i++){
-      tl.call(pushUpdateObjectRequest, [cards[i], {faceUp : !VGNIO.GetObjAttr(cards[i], 'faceUp'), cardLabel: {}}, true], '<'+duration*0.25);
+      //tl.call(SendRequests([pushUpdateObjectRequest]), [cards[i], {faceUp : !VGNIO.GetObjAttr(cards[i], 'faceUp'), cardLabel: {}}, true], '<'+duration*0.25);
+      tl.call(SendRequests, [[pushUpdateObjectRequest(cards[i], {faceUp : !VGNIO.GetObjAttr(cards[i], 'faceUp'), cardLabel: {}}, true)]], '<'+duration*0.25);
   }
   tl.resume();
 }
@@ -427,4 +367,74 @@ function ShuffleStack(cardStackObj, cards, callback=function(){}){
     }
     tl.call(callback);
     tl.resume();
+}
+
+function AddCard(stack, card, index, sendUpdate=false){
+  var updates = [];
+  var stackObj = document.getElementById(stack);
+  var cardObj = document.getElementById(card);
+  var cards = VGNIO.GetObjAttr(stack, 'cards');
+  cards.splice(index, 0, card);
+  stackObj.appendChild(cardObj);
+  SnapObject(cardObj, stackObj.cardSlot);
+  VGNIO.SetObjAttr(card, 'parentObj', stack);
+  stackObj.countText.nodeValue = cards.length;
+  for(var i = index; i < cards.length; i++){
+    ClientObjectCollection[cards[i]].style.zIndex = i;
+    VGNIO.GetObjAttr(cards[i], 'pos').z = i;
+    updates.push(pushUpdateObjectRequest(card, {parentObj: obj.uid}));
+  }
+  updates.push(pushUpdateObjectRequest(obj.uid, {cards: cards}));
+  ArrangeStack(obj, VGNIO.GetObjAttr(obj.uid, 'arrangement'));
+  if(sendUpdate){
+    SendRequests(updates);
+  }
+  return updates;
+};
+
+function RemoveCards(stack, removed, sendUpdate=false){
+  var updates = [];
+  var stackObj = document.getElementById(stack);
+  var cards = VGNIO.GetObjAttr(stack, 'cards');
+  for(card of removed){
+    var index = cards.indexOf(card);
+    if (index !== -1){
+      cards.splice(index, 1);
+      var cardObj =  document.getElementById(card);
+      VGNIO.UnparentClientObject(cardObj);
+      VGNIO.SetObjAttr(card, 'parentObj', null);
+      updates.push(pushUpdateObjectRequest(card, {parentObj: null}));
+    }
+    else{
+      console.log("Tried to remove card from stack that was not in stack");
+    } 
+  }
+  stackObj.countText.nodeValue = cards.length;
+  var parentDeck = VGNIO.GetObjAttr(stack, 'parentObj');
+  if(cards.length < 2 && !parentDeck || cards.length < 1 && parentDeck){
+    for(card of cards){
+      $('#'+card).show();
+      var cardObj =  document.getElementById(card);
+      if(stackObj.contains(cardObj)){
+        VGNIO.UnparentClientObject(cardObj);
+        updates.push(pushUpdateObjectRequest(card, {parentObj: null, releaseUser: true}));
+      }
+    }
+    if(parentDeck){
+      updates.concat(document.getElementById(parentDeck).removeCardStack());
+    }
+    updates.push(deleteObjectRequest(stack));
+  }
+  else{
+    updates.push(pushUpdateObjectRequest(stack, {cards: cards}));
+    ArrangeStack(obj, VGNIO.GetObjAttr(obj.uid, 'arrangement'));
+  }
+  if(sendUpdate){
+    SendRequests(updates);
+  }
+  return updates;
+}
+
+function RemoveCard(stack, card, sendUpdate=false){
+  return RemoveCards(stack, [card], sendUpdate);
 }

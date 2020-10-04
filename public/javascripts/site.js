@@ -58,27 +58,23 @@ function UpdateObject(uid, objData, noSave){
 }
 
 function createObjectRequest(objType, objData, uid=null){
-  console.log("Sending create object request for: " + objType, objData);
-  ws.send(JSON.stringify({type: 'createRequest', uid: uid, objType: objType, objData: objData}));
+  return {type: 'createRequest', uid: uid, objType: objType, objData: objData};
 }
 function deleteObjectRequest(uid){
   if(ClientObjectCollection[uid]){
     ClientObjectCollection[uid].style.visibility = 'hidden';
   }
-  console.log("Sending delete object request for: " + uid);
-  ws.send(JSON.stringify({type: 'deleteRequest', uid: uid}));
+  return {type: 'deleteRequest', uid: uid};
 }
+
 function pullUpdateObjectRequest(uid){
-  console.log("Sending pull update object request for: " + uid);
-  ws.send(JSON.stringify({type: 'pullUpdateRequest', uid: uid}));
+  return {type: 'pullUpdateRequest', uid: uid};
 }
 function pushUpdateObjectRequest(uid, objData, updateSelf=false){
-  console.log("Sending push update object request for: " + uid, objData);
-  ws.send(JSON.stringify({type: 'pushUpdateRequest', uid: uid, objData: objData, updateSelf: updateSelf}));
+  return {type: 'pushUpdateRequest', uid: uid, objData: objData, updateSelf: updateSelf};
 }
 function moveObjectRequest(uid, moveData){
-  console.log('sending move obj req', uid, moveData);
-  ws.send(JSON.stringify({type: 'moveRequest', uid: uid, moveData: moveData}));
+  return {type: 'moveRequest', uid: uid, moveData: moveData};
 }
 function strokeOnCanvas(uid, lineWidth, lineColor, start, end){
     var context = ObjectCollection[uid].canvas.getContext("2d");
@@ -90,6 +86,10 @@ function strokeOnCanvas(uid, lineWidth, lineColor, start, end){
     context.stroke();
 }
 
+function SendRequests(requests){
+  console.log("Sending Requests: ", requests);
+  ws.send(JSON.stringify({requests: requests}));
+}
 //A Click anywhere except the context menu closes the context menu
 window.addEventListener("mousedown", function(event){
   var cm = document.getElementById('context-menu');
@@ -139,7 +139,7 @@ VGNIO.Room.ContextMenuSpecs = {
       items: function(){
         return [
           {text: "Add New Deck", action: function(event){
-            createObjectRequest('Deck', {pos: clientToRoomPosition({x: event.target.clientX, y: event.target.clientY})});
+            SendRequests([createObjectRequest('Deck', {pos: clientToRoomPosition({x: event.target.clientX, y: event.target.clientY})})]);
           }},
           {text: "Reset Room", action: function(event){
             alert("Reset Room");
@@ -157,90 +157,94 @@ $('#room').contextmenu(function(event){
 
 ws.onmessage = function(e) {
   //console.log(e.data);
-  var data = JSON.parse(e.data);
-  console.log(data);
-  if(data.user && data.user == MYUSERID && !data.updateSelf){return;}
-  if(data.type == "canvasStroke"){
-    strokeOnCanvas(data.uid, data.lineWidth, data.lineColor, data.start, data.end);
-  }
-  if(data.type == "createObject"){
-    console.log("Received Create Object Request: " , data);
-    for(obj of data.objects){
-      if(!(obj.uid in ObjectCollection))
-      {
-        VGNIO.CreateClientObject(obj.uid, obj.objType, obj.objData, obj.noSave);
-        //pullUpdateObjectRequest(data.uid);
+  var dataArr = JSON.parse(e.data);
+  console.log(dataArr);
+  if(Array.isArray(dataArr)){
+    for(data of dataArr){
+      if(data.user && data.user == MYUSERID && !data.updateSelf){return;}
+      if(data.type == "canvasStroke"){
+        strokeOnCanvas(data.uid, data.lineWidth, data.lineColor, data.start, data.end);
       }
-      else
-      {
-        console.log("Object " + obj.uid + " already exists...");
+      if(data.type == "createObject"){
+        console.log("Received Create Object Request: " , data);
+        for(obj of data.objects){
+          if(!(obj.uid in ObjectCollection))
+          {
+            VGNIO.CreateClientObject(obj.uid, obj.objType, obj.objData, obj.noSave);
+            //pullUpdateObjectRequest(data.uid);
+          }
+          else
+          {
+            console.log("Object " + obj.uid + " already exists...");
+          }
+        }
+      }
+      if(data.type == "deleteObject"){
+        //console.log("Received Delete Request: " + data);
+        var clientObj = ClientObjectCollection[data.uid];
+        for(deleteFunction of clientObj.deleteFunctions){
+          deleteFunction();
+        }
+        //clientObj.parentNode.removeChild(ClientObjectCollection[data.uid]);
+        clientObj.remove();
+        delete ClientObjectCollection[data.uid];
+        delete ObjectCollection[data.uid];
+      }
+      if(data.type == "updateObject"){
+        //console.log("Received Update Request: " + data.uid);
+        //console.log(data);
+        UpdateObject(data.uid, data.objData, data.noSave);
+      }
+      if(data.type == "moveObject"){
+        console.log("Move reqeust rcvd", data);
+        gsap.to(ClientObjectCollection[data.uid], {duration: data.moveData.duration, x: data.moveData.xPre + data.moveData.x*VGNIO.Room.Bounds.w, y: data.moveData.yPre + data.moveData.y*VGNIO.Room.Bounds.h, rotation: data.moveData.rotation, ease: data.moveData.ease});
+      }
+      if(data.type == "userUpdate"){
+        if(data.action == "join"){
+          RoomInfo.users[data.user] = data.displayName;
+          var userStatusElem = document.getElementById('userstatus'+data.user);
+          if(userStatusElem){
+            userStatusElem.classList.remove('text-muted');
+          }
+          else{
+            $('#userList').append('<li id=userstatus'+data.user+' class="nav-item">'+RoomInfo.users[data.user]+'</li>');
+          }
+          var $chatBox = $('#chatBox');
+          $chatBox.append(data.displayName  + ' has joined the room\n');
+          $chatBox.scrollTop($chatBox[0].scrollHeight);
+        }
+        else if(data.action == "leave"){
+          document.getElementById('userstatus'+data.user).classList.add('text-muted');
+          var $chatBox = $('#chatBox');
+          $chatBox.append(data.displayName  + ' has left the room\n');
+          $chatBox.scrollTop($chatBox[0].scrollHeight);
+        }
+      }
+      if(data.type == "msgRequest"){
+        var $chatBox = $('#chatBox');
+        $chatBox.append(RoomInfo.users[data.user]  + ': ' + data.msg + '\n');
+        $chatBox.scrollTop($chatBox[0].scrollHeight);
+      }
+      if(data.type == "RoomInit"){
+        RoomInfo.users = data.users;
+        RoomInfo.chatlog = data.chatlog;
+        var $userList = $('#userList');
+        for(user in RoomInfo.users){
+          $userList.append('<li id=userstatus'+user+' class="nav-item'+(data.activeUsers[user] ? '' : ' text-muted')+'">'+RoomInfo.users[user]+'</li>');
+          //$('#collapseUser').height('auto');
+        }
+        var $chatBox = $('#chatBox');
+        for(msg of RoomInfo.chatlog){
+          $chatBox.append(RoomInfo.users[msg.user] + ': ' + msg.msg + '\n');
+        }
+        $chatBox.scrollTop($chatBox[0].scrollHeight);
       }
     }
-  }
-  if(data.type == "deleteObject"){
-    //console.log("Received Delete Request: " + data);
-    var clientObj = ClientObjectCollection[data.uid];
-    for(deleteFunction of clientObj.deleteFunctions){
-      deleteFunction();
-    }
-    //clientObj.parentNode.removeChild(ClientObjectCollection[data.uid]);
-    clientObj.remove();
-    delete ClientObjectCollection[data.uid];
-    delete ObjectCollection[data.uid];
-  }
-  if(data.type == "updateObject"){
-    //console.log("Received Update Request: " + data.uid);
-    //console.log(data);
-    UpdateObject(data.uid, data.objData, data.noSave);
-  }
-  if(data.type == "moveObject"){
-    console.log("Move reqeust rcvd", data);
-    gsap.to(ClientObjectCollection[data.uid], {duration: data.moveData.duration, x: data.moveData.xPre + data.moveData.x*VGNIO.Room.Bounds.w, y: data.moveData.yPre + data.moveData.y*VGNIO.Room.Bounds.h, rotation: data.moveData.rotation, ease: data.moveData.ease});
-  }
-  if(data.type == "userUpdate"){
-    if(data.action == "join"){
-      RoomInfo.users[data.user] = data.displayName;
-      var userStatusElem = document.getElementById('userstatus'+data.user);
-      if(userStatusElem){
-        userStatusElem.classList.remove('text-muted');
-      }
-      else{
-        $('#userList').append('<li id=userstatus'+data.user+' class="nav-item">'+RoomInfo.users[data.user]+'</li>');
-      }
-      var $chatBox = $('#chatBox');
-      $chatBox.append(data.displayName  + ' has joined the room\n');
-      $chatBox.scrollTop($chatBox[0].scrollHeight);
-    }
-    else if(data.action == "leave"){
-      document.getElementById('userstatus'+data.user).classList.add('text-muted');
-      var $chatBox = $('#chatBox');
-      $chatBox.append(data.displayName  + ' has left the room\n');
-      $chatBox.scrollTop($chatBox[0].scrollHeight);
-    }
-  }
-  if(data.type == "msgRequest"){
-    var $chatBox = $('#chatBox');
-    $chatBox.append(RoomInfo.users[data.user]  + ': ' + data.msg + '\n');
-    $chatBox.scrollTop($chatBox[0].scrollHeight);
-  }
-  if(data.type == "RoomInit"){
-    RoomInfo.users = data.users;
-    RoomInfo.chatlog = data.chatlog;
-    var $userList = $('#userList');
-    for(user in RoomInfo.users){
-      $userList.append('<li id=userstatus'+user+' class="nav-item'+(data.activeUsers[user] ? '' : ' text-muted')+'">'+RoomInfo.users[user]+'</li>');
-      //$('#collapseUser').height('auto');
-    }
-    var $chatBox = $('#chatBox');
-    for(msg of RoomInfo.chatlog){
-      $chatBox.append(RoomInfo.users[msg.user] + ': ' + msg.msg + '\n');
-    }
-    $chatBox.scrollTop($chatBox[0].scrollHeight);
   }
 };
 
 function SendChatMessage(message){
-  ws.send(JSON.stringify({type: 'msgRequest', msg: message, updateSelf: true}));
+  ws.send(JSON.stringify([{type: 'msgRequest', msg: message, updateSelf: true}]));
 }
 
 $('#button-chatSend').on('click', function(){

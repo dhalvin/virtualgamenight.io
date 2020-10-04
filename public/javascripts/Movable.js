@@ -127,10 +127,10 @@ VGNIO.Movable = new function(){
     $('#context-menu').removeClass("show");
     this.contextJustUp = false;
     VGNIO.SetObjAttr(this.target.id, 'moving', true);
-    pushUpdateObjectRequest(this.target.id, {'moving': true, 'user': {}});
+    SendRequests([pushUpdateObjectRequest(this.target.id, {'moving': true, 'user': {}})]);
     $(this.target).css( 'filter', 'drop-shadow('+Math.round(VGNIO.Room.ClientSizeMult*15)+'px '+Math.round(VGNIO.Room.ClientSizeMult*15)+'px '+Math.round(VGNIO.Room.ClientSizeMult*10)+'px #000)');
     this.dragTween = gsap.to(this.target, {duration: 0.1, rotation: 5});
-    //Get all snappable locations, can probably generalize this later
+    //Get all snappable locations
     this.SnapLocations = [];
     for(objUid in ObjectCollection){
       if(objUid != this.target.id && VGNIO[VGNIO.GetObjType(this.target.id)].isSnappableTarget(objUid ,this.target.id)){
@@ -146,12 +146,12 @@ VGNIO.Movable = new function(){
     VGNIO.GetObjAttr(this.target.id, 'pos').x = rect.x;
     VGNIO.GetObjAttr(this.target.id, 'pos').y = rect.y;
     this.target.style.zIndex = 500;
-    pushUpdateObjectRequest(this.target.id, {pos: VGNIO.GetObjAttr(this.target.id, 'pos')}); //moving: VGNIO.GetObjAttr(obj.uid, 'moving')});
+    SendRequests([pushUpdateObjectRequest(this.target.id, {pos: VGNIO.GetObjAttr(this.target.id, 'pos')})]); //moving: VGNIO.GetObjAttr(obj.uid, 'moving')}))]);
     VGNIO[VGNIO.GetObjType(this.target.getAttribute('id'))].OnDrag(this);
   }
   this.OnDragEnd = function(e){
     VGNIO.SetObjAttr(this.target.id, 'moving', false);
-    pushUpdateObjectRequest(this.target.id, {'moving': false, 'releaseUser': true});
+    SendRequests([pushUpdateObjectRequest(this.target.id, {'moving': false, 'releaseUser': true})]);
     $(this.target).css( 'filter', '');
     this.dragTween.reverse();
     VGNIO[VGNIO.GetObjType(this.target.getAttribute('id'))].OnDragEnd(this);

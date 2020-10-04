@@ -72,7 +72,7 @@ VGNIO.Card = new function(){
   };
 
   this.OnClick = function(event){
-    pushUpdateObjectRequest(event.target.id, {faceUp : !VGNIO.GetObjAttr(event.target.id, 'faceUp'), cardLabel: {}}, true);
+    SendRequests([pushUpdateObjectRequest(event.target.id, {faceUp : !VGNIO.GetObjAttr(event.target.id, 'faceUp'), cardLabel: {}}, true)]);
   }
   
   this.OnRightClick = function(event){
@@ -90,14 +90,13 @@ VGNIO.Card = new function(){
   }
   this.OnDragStart = function(event){
     //Remove from parent stack
-    var parentStack = ClientObjectCollection[VGNIO.GetObjAttr(event.target.id, 'parentObj')];
-    if(parentStack){// && !VGNIO.GetObjAttr(parentStack.uid, 'moving')){
+    var parentStack = VGNIO.GetObjAttr(event.target.id, 'parentObj');
+    if(parentStack){
       if(event.target.hoverTween){
         event.target.hoverTween.kill();
         event.target.hoverTween = null;
       }
-      parentStack.removeCard(event.target.id);
-      //event.update();
+      RemoveCard(parentStack, event.target.id, true);
     }
   }
 
@@ -109,7 +108,7 @@ VGNIO.Card = new function(){
       if(snappedType == 'Card'){
         var parentStack = VGNIO.GetObjAttr(event.snappedObj.id, 'parentObj');
         if(parentStack){
-          document.getElementById(parentStack).addCard(event.target.id, event.snappedObj.z);
+          AddCard(parentStack, event.target.id, event.snappedObj.z, true)
         }
         else{
           SnapObject(event.target, document.getElementById(event.snappedObj.id));
@@ -117,7 +116,7 @@ VGNIO.Card = new function(){
             pos: ObjectCollection[event.target.id].objData.pos,
             cards: [event.snappedObj.id, event.target.id]
           };
-          createObjectRequest('CardStack', newStackData);
+          SendRequests([createObjectRequest('CardStack', newStackData)]);
         }
       }
       //The snapped deck should always be empty, otherwise it would snap to a card
@@ -128,7 +127,7 @@ VGNIO.Card = new function(){
           cards: [event.target.id],
           parentObj: event.snappedObj.id
         };
-        createObjectRequest('CardStack', newStackData);
+        SendRequests([createObjectRequest('CardStack', newStackData)]);
       }
 
     }
@@ -148,7 +147,7 @@ VGNIO.Card = new function(){
         items: function(){
           return [
             {text: "Flip Card", action: function(event){
-              pushUpdateObjectRequest(event.target.id, {faceUp : !VGNIO.GetObjAttr(event.target.id, 'faceUp'), cardLabel: {}}, true);
+              SendRequests([pushUpdateObjectRequest(event.target.id, {faceUp : !VGNIO.GetObjAttr(event.target.id, 'faceUp'), cardLabel: {}}, true)]);
             }}
           ]
         }

@@ -47,7 +47,7 @@ function setup(wss){
     socket.on("message", function(message){
       var data = JSON.parse(message);
       try{
-        Requests.onRequest[data.type](data, user);
+        Requests.handleRequests(data, user);
       }
       catch(err){
         console.log('Error processing request: ', message, err);
@@ -89,14 +89,14 @@ function onUserConnected(user){
       RoomManager.UserJoin(user.roomid, user.userid, user.displayName, function(){
         RoomManager.RetrieveRoomDetails(user.roomid, function(roomdetails){
           var data = {type: 'RoomInit', users: roomdetails.users, activeUsers: roomdetails.activeUsers, chatlog: roomdetails.chatlog};
-          user.socket.send(JSON.stringify(data));
+          user.socket.send(JSON.stringify([data]));
         });
         RoomManager.GetObjects(user.roomid, function(roomObjs){
           var newObjMsg = {type: "createObject", objects: []};
           for(newObj of roomObjs){
             newObjMsg.objects.push({uid: newObj.uid, objType: newObj.objType, objData: newObj.objData, noSave: SyncObjectFactory.NoSave[newObj.objType]});
           }
-          user.socket.send(JSON.stringify(newObjMsg));
+          user.socket.send(JSON.stringify([newObjMsg]));
         });
       });
     }

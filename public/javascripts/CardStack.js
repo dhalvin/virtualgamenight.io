@@ -53,6 +53,7 @@ VGNIO.CardStack = new function(){
         var oldCards = VGNIO.GetObjAttr(obj.uid, 'cards');
         var removedCards = oldCards.filter(function(card){return !updateData.cards.includes(card)});
         for(card of removedCards){
+          $('#'+card).show();
           var cardObj =  ClientObjectCollection[card];
           if(obj.contains(cardObj)){
             VGNIO.UnparentClientObject(cardObj);
@@ -84,11 +85,12 @@ VGNIO.CardStack = new function(){
         if(obj.contains(ClientObjectCollection[card])){
           $('#'+card).show();
           var cardObj =  ClientObjectCollection[card];
-          UnparentClientObject(cardObj);
+          VGNIO.UnparentClientObject(cardObj);
         }
       }
-      var parentObj = ObjectCollection[obj.uid].get('parentObj');
+      var parentObj = VGNIO.GetObjAttr(obj.uid, 'parentObj');
       if(parentObj){
+        VGNIO.SetObjAttr(parentObj, 'cardStack', null);
         ObjectCollection[parentObj].set('cardStack', null);
       }
     });
@@ -154,67 +156,173 @@ VGNIO.CardStack = new function(){
   }
 
   this.ContextMenuSpecs = {
-    cardstack_section: function(){
-      return {
-        attribute: null,
-        condition: null,
-        name: "Card Stack",
-        getTarget: function(event){
-          return event.target;
-        },
-        items: function(){
-          return [
-            {text: "Flip Stack", action: function(event){
-              FlipStack(event.target.id);
-            }},
-            {text: "Shuffle", action: function(event){
-              var shuffledCards = shuffleArray(VGNIO.GetObjAttr(event.target.id, 'cards'));
-              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'shuffle', cards: shuffledCards})]);
-              ArrangeStack(event.target, 'shuffle', shuffledCards, function(){
-                var arrangement = VGNIO.GetObjAttr(event.target.id, 'arrangement');
-                SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: arrangement})]);
-                ArrangeStack(event.target, arrangement);
-              });
-            }},
-            {text: "Split Stack", action: function(event){
-              var stackPos = clientToRoomPosition(event.target.getBoundingClientRect());
-              SplitStack(event.target.id, {x: Math.max(0.03, stackPos.x - normalizePosition({x: VGNIO.Card.CardSize.w, y: VGNIO.Card.CardSize.h}).x), y: Math.max(0.03, stackPos.y)});            
-            }},
-            {text: "Fan Right", action: function(event){
-              VGNIO.SetObjAttr(event.target.id, 'arrangement', 'fanright');
-              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'fanright'})]);
-              ArrangeStack(event.target, 'fanright');
-            }},
-            {text: "Fan Down", action: function(event){
-              VGNIO.SetObjAttr(event.target.id, 'arrangement', 'fandown');
-              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'fandown'})]);
-              ArrangeStack(event.target, 'fandown');
-            }},
-            {text: "Fan Out", action: function(event){
-              VGNIO.SetObjAttr(event.target.id, 'arrangement', 'fanout');
-              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'fanout'})]);
-              ArrangeStack(event.target, 'fanout');
-            }},
-            {text: "Neatly Stack", action: function(event){
-              VGNIO.SetObjAttr(event.target.id, 'arrangement', 'standard');
-              SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'standard'})]);
-              ArrangeStack(event.target, 'standard');
-            }}
-          ];
+    default: {
+      cardstack_section: function(){
+        return {
+          attribute: null,
+          condition: null,
+          name: "Card Stack",
+          getTarget: function(event){
+            return event.target;
+          },
+          items: function(){
+            return [
+              {text: "Arrange Stack", type: 'default', submenu: true, action: function(event){
+                VGNIO.ShowContextMenu('CardStack', event, 'arrangement');
+              }},
+              {text: "Flip Stack", type: 'default', action: function(event){
+                FlipStack(event.target.id);
+              }},
+              {text: "Shuffle", type: 'default', action: function(event){
+                var shuffledCards = shuffleArray(VGNIO.GetObjAttr(event.target.id, 'cards'));
+                SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'shuffle', cards: shuffledCards})]);
+                ArrangeStack(event.target, 'shuffle', shuffledCards, function(){
+                  var arrangement = VGNIO.GetObjAttr(event.target.id, 'arrangement');
+                  SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: arrangement})]);
+                  ArrangeStack(event.target, arrangement);
+                });
+              }},
+              {text: "Split Stack", type: 'default', action: function(event){
+                var stackPos = clientToRoomPosition(event.target.getBoundingClientRect());
+                SplitStack(event.target.id, {x: Math.max(0.03, stackPos.x - normalizePosition({x: VGNIO.Card.CardSize.w, y: VGNIO.Card.CardSize.h}).x), y: Math.max(0.03, stackPos.y)});            
+              }},
+              {text: "Explode!", type: 'default', submenu: true, action: function(event){
+                VGNIO.ShowContextMenu('CardStack', event, 'explode');
+              }},
+              {text: "Deal", type: 'default', submenu: true, action: function(event){
+                VGNIO.ShowContextMenu('CardStack', event, 'deal');
+                var stackBounds = event.target.getBoundingClientRect();
+                ShowGhostCards(stackBounds, 'line', 4);
+              }}
+            ];
+          }
+        }
+      },
+      deck_section: function(){
+        return {
+          attribute: 'parentObj',
+          condition: true,
+          name: "Deck",
+          getTarget: function(event){
+            return document.getElementById(VGNIO.GetObjAttr(event.target.id, 'parentObj'));
+          },
+          items: function(){
+            return VGNIO.Deck.ContextMenuSpecs['default'].deck_section().items();
+          }
         }
       }
-
     },
-    deck_section: function(){
-      return {
-        attribute: 'parentObj',
-        condition: true,
-        name: "Deck",
-        getTarget: function(event){
-          return document.getElementById(VGNIO.GetObjAttr(event.target.id, 'parentObj'));
-        },
-        items: function(){
-          return VGNIO.Deck.ContextMenuSpecs.deck_section().items();
+    arrangement: {
+      arrangement_section: function(){
+        return {
+          attribute: null,
+          condition: null,
+          name: "Arrange Stack",
+          getTarget: function(event){
+            return event.target;
+          },
+          items: function(){
+            return [
+              {text: "Fan Right", type: 'default', action: function(event){
+                VGNIO.SetObjAttr(event.target.id, 'arrangement', 'fanright');
+                SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'fanright'})]);
+                ArrangeStack(event.target, 'fanright');
+              }},
+              {text: "Fan Down", type: 'default', action: function(event){
+                VGNIO.SetObjAttr(event.target.id, 'arrangement', 'fandown');
+                SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'fandown'})]);
+                ArrangeStack(event.target, 'fandown');
+              }},
+              {text: "Fan Out", type: 'default', action: function(event){
+                VGNIO.SetObjAttr(event.target.id, 'arrangement', 'fanout');
+                SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'fanout'})]);
+                ArrangeStack(event.target, 'fanout');
+              }},
+              {text: "Neatly Stack", type: 'default', action: function(event){
+                VGNIO.SetObjAttr(event.target.id, 'arrangement', 'standard');
+                SendRequests([pushUpdateObjectRequest(event.target.id, {arrangement: 'standard'})]);
+                ArrangeStack(event.target, 'standard');
+              }}
+            ]
+          }
+        }
+      }
+    },
+    explode: {
+      explode_section: function(){
+        return {
+          attribute: null,
+          condition: null,
+          name: "Explode Stack",
+          getTarget: function(event){
+            return event.target;
+          },
+          items: function(){
+            return [
+              {text: null, type: 'form', inputs: [
+                {text: "Power: ", type: 'slider', id: 'explode_power', 
+                  min: function(){return 10}, 
+                  max: function(){return 120}, 
+                  step: function(){return 10}, 
+                  default: function(){return 50}}]},
+              {text: null, type: 'divider'},
+              {text: "Explode!", type: 'default', action: function(event){
+                ExplodeStack(event.target.id, document.getElementById('explode_power').value/100);
+              }}
+            ]
+          }
+        }
+      }
+    },
+    deal: {
+      deal_section: function(){
+        return {
+          attribute: null,
+          condition: null,
+          name: "Deal Cards",
+          getTarget: function(event){
+            return event.target;
+          },
+          items: function(){
+            return [
+              {text: null, type: 'form', inputs: [
+                {text: "# of Cards: ", type: 'slider', id: 'deal_cards',
+                  min: function(){return 1}, 
+                  max: function(event){return VGNIO.GetObjAttr(event.target.id, 'cards').length}, 
+                  step: function(){return 1}, 
+                  default: function(event){return Math.min(5, VGNIO.GetObjAttr(event.target.id, 'cards').length)},
+                  onchange: function(event){
+                    var playerSlider = document.getElementById('deal_players');
+                    var newMax = Math.floor(document.getElementById('deal_cards').max/document.getElementById('deal_cards').value);
+                    playerSlider.setAttribute('max', newMax);
+                    playerSlider.value = Math.min(playerSlider.value, newMax);
+                    document.getElementById('deal_players_value').innerText = playerSlider.value;
+                    var stackBounds = event.target.getBoundingClientRect();
+                    ShowGhostCards(stackBounds, document.querySelector('input[name="'+input.id+'"]:checked').value, document.getElementById('deal_players').value);
+                  }},
+                {text: "# of Players: ", type: 'slider', id: 'deal_players',
+                  min: function(){return 1}, 
+                  max: function(){return Math.floor(document.getElementById('deal_cards').max/document.getElementById('deal_cards').value) || 1}, 
+                  step: function(){return 1}, 
+                  default: function(){return Math.min(4, Math.floor(document.getElementById('deal_cards').max/document.getElementById('deal_cards').value) || 4)},
+                  onchange: function(event){
+                    var stackBounds = event.target.getBoundingClientRect();
+                    ShowGhostCards(stackBounds, document.querySelector('input[name="'+input.id+'"]:checked').value, document.getElementById('deal_players').value);
+                  }
+                },
+                {text: 'Pattern: ', type: 'radio', options: ['line', 'around'], id: 'deal_pattern', onchange: function(event){
+                  var stackBounds = event.target.getBoundingClientRect();
+                  ShowGhostCards(stackBounds, document.querySelector('input[name="'+input.id+'"]:checked').value, document.getElementById('deal_players').value);
+                }}
+              ]},
+              {text: null, type: 'divider'},
+              {text: "Deal Cards", type: 'default', action: function(event){
+                ClearDealGhosts();
+                var positions = CalculateDealPositions(document.querySelector('input[name="'+input.id+'"]:checked').value, event.target.getBoundingClientRect(), document.getElementById('deal_players').value);
+                DealCards(event.target.id, document.getElementById('deal_cards').value, document.getElementById('deal_players').value, positions);
+              }}
+            ]
+          }
         }
       }
     }
@@ -225,7 +333,7 @@ function SplitStack(stack, pos, index=Math.floor(VGNIO.GetObjAttr(stack, 'cards'
   var stackObj = document.getElementById(stack);
   var cards = VGNIO.GetObjAttr(stack, 'cards');
   var newCards = cards.slice(index);
-  requests.concat(RemoveCards(stack, newCards));
+  requests = requests.concat(RemoveCards(stack, newCards));
 
   if(newCards.length >= 2){
     var newStackData = {
@@ -241,9 +349,14 @@ function SplitStack(stack, pos, index=Math.floor(VGNIO.GetObjAttr(stack, 'cards'
       requests.push(pushUpdateObjectRequest(card, {pos: pos}));
     }
   }
-  requests.push(pushUpdateObjectRequest(stack, {cards: cards}));
+  
+  var parentDeck = VGNIO.GetObjAttr(stack, 'parentObj');
+  if(cards.length >= 2 && !parentDeck || cards.length >= 1 && parentDeck){
+    VGNIO.SetObjAttr(stack, 'cards', cards);
+    requests.push(pushUpdateObjectRequest(stack, {cards: cards}));
+    ArrangeStack(stackObj, VGNIO.GetObjAttr(stack, 'arrangement'));
+  }
   SendRequests(requests);
-  ArrangeStack(stackObj, VGNIO.GetObjAttr(stack, 'arrangement'));
 }
 
 function MergeStacks(target, source, index=VGNIO.GetObjAttr(target, 'cards').length){
@@ -251,7 +364,7 @@ function MergeStacks(target, source, index=VGNIO.GetObjAttr(target, 'cards').len
   var targetObj = document.getElementById(target);
   var targetCards = VGNIO.GetObjAttr(target, 'cards');
   var sourceCards = VGNIO.GetObjAttr(source, 'cards').slice(0);
-  updates.concat(RemoveCards(source, sourceCards, false));
+  updates = updates.concat(RemoveCards(source, sourceCards, false));
   sourceCards = sourceCards.concat(targetCards.splice(index, targetCards.length - index));
   targetCards = targetCards.concat(sourceCards);
   targetObj.countText.nodeValue = targetCards.length;
@@ -270,17 +383,78 @@ function MergeStacks(target, source, index=VGNIO.GetObjAttr(target, 'cards').len
   ArrangeStack(targetObj, VGNIO.GetObjAttr(target, 'arrangement'));
 }
 
-function ExplodeStack(stack){
-
+function ExplodeStack(stack, magnitude=0.5){
+  var requests = [];
+  var cards = VGNIO.GetObjAttr(stack, 'cards').slice(0);
+  requests = requests.concat(RemoveCards(stack, cards));
+  var tl = gsap.timeline();
+  tl.pause();
+  tl.set({}, {}, '>0.2');
+  var normalCardSize = normalizePosition({x: VGNIO.Room.ClientSizeMult*VGNIO.Card.CardSize.w, y: VGNIO.Room.ClientSizeMult*VGNIO.Card.CardSize.h});
+  for(card of cards){
+    let cardPos = clientToRoomPosition(document.getElementById(card).getBoundingClientRect());
+    let randX = Math.min(Math.max(0, cardPos.x + (Math.random()-0.5)*(magnitude)), 1.0 - normalCardSize.x);
+    let randY = Math.min(Math.max(0, cardPos.y + (Math.random()-0.5)*(magnitude)), 1.0 - normalCardSize.y);
+    VGNIO.GetObjAttr(card, 'pos').x = randX;
+    VGNIO.GetObjAttr(card, 'pos').y = randY;
+    tl.to(document.getElementById(card), {duration: 1, x: randX * VGNIO.Room.Bounds.w, y: randY * VGNIO.Room.Bounds.h, rotation: 0, ease: 'power4'}, '<');
+    requests.push(moveObjectRequest(card, {duration: 1, x: randX, y: randY, rotation: 0, ease: 'power4'}));
+  }
+  tl.resume();
+  SendRequests(requests);
 }
 
+function DealCards(stack, numCards, numPlayers, positions){
+  var cards = VGNIO.GetObjAttr(stack, 'cards').slice(0);
+  var newStacks = [];
+  var tl = gsap.timeline({onCompleteParams: [newStacks], onComplete: function(newStacks){
+    var requests = [];
+    for(newStack of newStacks){
+      requests.push(createObjectRequest('CardStack', {
+        pos: newStack.pos,
+        cards: newStack.cards,
+        arrangement: 'standard'
+      }));
+    }
+    SendRequests(requests);
+  }});
+  tl.pause();
+  if(numCards > cards.length || numCards * numPlayers > cards.length){return;}
+  for(var card = 0; card < numCards; card++){
+    for(var player = 0; player < numPlayers; player++){
+      var cardID = cards.pop();
+      var cardPos = {x: positions[player].x, y: positions[player].y};
+      var normalPos = normalizePosition(cardPos);
+      if(numCards > 1){
+        if(!newStacks[player]){
+          newStacks.push({pos: normalPos, cards: [cardID]});
+        }
+        else{
+          newStacks[player].cards.push(cardID);
+        }
+      }
+      tl.call(RemoveCard, [stack, cardID, true], '<0.1');
+      tl.to(document.getElementById(cardID), 
+      {overwrite: true, duration: 2, x: cardPos.x, y: cardPos.y, rotation: 360,  ease: 'power4', onStartParams: [stack, cardID, {x: normalPos.x, y: normalPos.y}], onStart: function(stack, card, pos){
+        var requests = [];
+        requests.push(moveObjectRequest(card, {duration: 2, x: pos.x, y: pos.y, rotation: 360, ease: 'power4'}));
+        SendRequests(requests);
+      }, onCompleteParams: [cardID], onComplete: function(card){
+        gsap.to(document.getElementById(card), {delay: 0.2, duration: 0, rotation: 0});
+        SendRequests([moveObjectRequest(card, {delay: 0.2, duration: 0, rotation: 0})]);
+      }}, '>0.4');
+    }
+  }
+  tl.set({}, {}, '>0.2');
+  tl.resume();
+
+}
 function FlipStack(stack){
   var cards = VGNIO.GetObjAttr(stack, 'cards');
   var tl = gsap.timeline();
   tl.pause();
   var duration = .1;
   for(var i = 0; i < cards.length; i++){
-      //tl.call(SendRequests([pushUpdateObjectRequest]), [cards[i], {faceUp : !VGNIO.GetObjAttr(cards[i], 'faceUp'), cardLabel: {}}, true], '<'+duration*0.25);
       tl.call(SendRequests, [[pushUpdateObjectRequest(cards[i], {faceUp : !VGNIO.GetObjAttr(cards[i], 'faceUp'), cardLabel: {}}, true)]], '<'+duration*0.25);
   }
   tl.resume();
@@ -382,10 +556,10 @@ function AddCard(stack, card, index, sendUpdate=false){
   for(var i = index; i < cards.length; i++){
     ClientObjectCollection[cards[i]].style.zIndex = i;
     VGNIO.GetObjAttr(cards[i], 'pos').z = i;
-    updates.push(pushUpdateObjectRequest(card, {parentObj: obj.uid}));
   }
-  updates.push(pushUpdateObjectRequest(obj.uid, {cards: cards}));
-  ArrangeStack(obj, VGNIO.GetObjAttr(obj.uid, 'arrangement'));
+  updates.push(pushUpdateObjectRequest(card, {parentObj: stack}));
+  updates.push(pushUpdateObjectRequest(stack, {cards: cards}));
+  ArrangeStack(stackObj, VGNIO.GetObjAttr(stack, 'arrangement'));
   if(sendUpdate){
     SendRequests(updates);
   }
@@ -401,6 +575,7 @@ function RemoveCards(stack, removed, sendUpdate=false){
     if (index !== -1){
       cards.splice(index, 1);
       var cardObj =  document.getElementById(card);
+      $('#'+card).show();
       VGNIO.UnparentClientObject(cardObj);
       VGNIO.SetObjAttr(card, 'parentObj', null);
       updates.push(pushUpdateObjectRequest(card, {parentObj: null}));
@@ -417,17 +592,19 @@ function RemoveCards(stack, removed, sendUpdate=false){
       var cardObj =  document.getElementById(card);
       if(stackObj.contains(cardObj)){
         VGNIO.UnparentClientObject(cardObj);
-        updates.push(pushUpdateObjectRequest(card, {parentObj: null, releaseUser: true}));
+        VGNIO.SetObjAttr(card, 'parentObj', null);
+        updates.push(pushUpdateObjectRequest(card, {parentObj: null}));
       }
     }
     if(parentDeck){
-      updates.concat(document.getElementById(parentDeck).removeCardStack());
+      updates = updates.concat(document.getElementById(parentDeck).removeCardStack());
     }
+    updates.push(pushUpdateObjectRequest(stack, {cards: []}));
     updates.push(deleteObjectRequest(stack));
   }
   else{
     updates.push(pushUpdateObjectRequest(stack, {cards: cards}));
-    ArrangeStack(obj, VGNIO.GetObjAttr(obj.uid, 'arrangement'));
+    ArrangeStack(stackObj, VGNIO.GetObjAttr(stack, 'arrangement'));
   }
   if(sendUpdate){
     SendRequests(updates);
@@ -437,4 +614,42 @@ function RemoveCards(stack, removed, sendUpdate=false){
 
 function RemoveCard(stack, card, sendUpdate=false){
   return RemoveCards(stack, [card], sendUpdate);
+}
+
+function ShowGhostCards(origin, pattern, count){
+  ClearDealGhosts();
+  var positions = CalculateDealPositions(pattern, origin, count);
+  for(var i = 0; i < count; i++){
+    var newGhost = document.createElement('img');
+    document.getElementById('room').appendChild(newGhost);
+    newGhost.className = 'ghost';
+    newGhost.src = '/card/Default/card_back';
+    newGhost.style.width = VGNIO.Room.ClientSizeMult * VGNIO.Card.CardSize.w + 'px';
+    newGhost.style.height = VGNIO.Room.ClientSizeMult * VGNIO.Card.CardSize.h + 'px';
+    gsap.to(newGhost, {duration: 0, x: positions[i].x, y: positions[i].y});
+  }
+}
+
+function CalculateDealPositions(pattern, origin, count){
+  var positions = [];
+  for(var i = 0; i < count; i++){
+    if(pattern == 'line'){
+      var d_center = i - Math.floor(count/2);
+      positions.push({x: origin.x + d_center*VGNIO.Room.ClientSizeMult * VGNIO.Card.CardSize.w - VGNIO.Room.Bounds.x, y: origin.y - 1.5*VGNIO.Room.ClientSizeMult * VGNIO.Card.CardSize.h - VGNIO.Room.Bounds.y});
+    }
+    else if (pattern == 'around'){
+      var r = VGNIO.Room.ClientSizeMult * VGNIO.Card.CardSize.h * 2;
+      var dx = Math.sin(i*2*Math.PI/count);
+      var dy = Math.cos(i*2*Math.PI/count);
+      positions.push({x: origin.x + r*dx - VGNIO.Room.Bounds.x, y: origin.y - r*dy - VGNIO.Room.Bounds.y});
+    }
+  }
+  return positions;
+}
+
+function ClearDealGhosts(){
+  var ghosts = document.getElementsByClassName('ghost');
+  for(var i = ghosts.length; i > 0; i--){
+    ghosts[i-1].remove();
+  }
 }

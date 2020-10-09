@@ -12,7 +12,6 @@ VGNIO.Card = new function(){
     obj.style.visibility = 'visible';
     obj.cardImg.style.visibility = 'visible';
     obj.resize = function(){
-      //var sizeM = VGNIO.Room.Bounds.w/VGNIO.Room.TargetRoomSize.w;
       obj.cardImg.style.width = VGNIO.Room.ClientSizeMult * VGNIO.Card.CardSize.w + 'px';
       obj.cardImg.style.height = VGNIO.Room.ClientSizeMult * VGNIO.Card.CardSize.h + 'px';
     };
@@ -136,36 +135,38 @@ VGNIO.Card = new function(){
   }
 
   this.ContextMenuSpecs = {
-    card_section: function(){
-      return {
-        attribute: null,
-        condition: null,
-        name: "Card",
-        getTarget: function(event){
-          return event.target;
-        },
-        items: function(){
-          return [
-            {text: "Flip Card", action: function(event){
-              SendRequests([pushUpdateObjectRequest(event.target.id, {faceUp : !VGNIO.GetObjAttr(event.target.id, 'faceUp'), cardLabel: {}}, true)]);
-            }}
-          ]
+    default: {
+      card_section: function(){
+        return {
+          attribute: null,
+          condition: null,
+          name: "Card",
+          getTarget: function(event){
+            return event.target;
+          },
+          items: function(){
+            return [
+              {text: "Flip Card", type: 'default', action: function(event){
+                SendRequests([pushUpdateObjectRequest(event.target.id, {faceUp : !VGNIO.GetObjAttr(event.target.id, 'faceUp'), cardLabel: {}}, true)]);
+              }}
+            ]
+          }
         }
-      }
-    },
-    cardstack_section: function(){
-      return {
-        attribute: 'parentObj',
-        condition: true,
-        name: "Cardstack",
-        getTarget: function(event){
-          return document.getElementById(VGNIO.GetObjAttr(event.target.id, 'parentObj'));
-        },
-        items: function(){
-          return VGNIO.CardStack.ContextMenuSpecs.cardstack_section().items();
+      },
+      cardstack_section: function(){
+        return {
+          attribute: 'parentObj',
+          condition: true,
+          name: "Cardstack",
+          getTarget: function(event){
+            return document.getElementById(VGNIO.GetObjAttr(event.target.id, 'parentObj'));
+          },
+          items: function(){
+            return VGNIO.CardStack.ContextMenuSpecs['default'].cardstack_section().items();
+          }
         }
-      }
 
+      }
     }
   }
 };

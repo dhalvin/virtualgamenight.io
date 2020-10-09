@@ -93,20 +93,22 @@ VGNIO.Deck = new function(){
   this.OnDragEnd = function(event){}
 
   this.ContextMenuSpecs = {
-    deck_section: function(){
-      return {
-        attribute: null,
-        condition: null,
-        name: "Deck",
-        getTarget: function(event){
-          return event.target;
-        },
-        items: function(){
-          return [
-            {text: "Recall Cards", action: function(event){
-              RecallCards(event.target.id);
-            }}
-          ]
+    default: {
+      deck_section: function(){
+        return {
+          attribute: null,
+          condition: null,
+          name: "Deck",
+          getTarget: function(event){
+            return event.target;
+          },
+          items: function(){
+            return [
+              {text: "Recall Cards", type: 'default', action: function(event){
+                RecallCards(event.target.id);
+              }}
+            ]
+          }
         }
       }
     }
@@ -118,13 +120,13 @@ function RecallCards(deck){
   var deckObj = document.getElementById(deck);
   var deckBounds = deckObj.getBoundingClientRect();
   var deckStack = VGNIO.GetObjAttr(deck, 'cardStack');
-
+  var deckStackArr = VGNIO.GetObjAttr(deckStack, 'cards');
   var tl = gsap.timeline({delay: 0.25, onComplete: function(){
     var requests = [];
     if(deckStack && deckStack in ObjectCollection){
       for(card of cardsInDeck){
         if(!VGNIO.GetObjAttr(deckStack, 'cards').includes(card)){
-          requests.concat(AddCard(deckStack, card, cardsInDeck.length));
+          requests = requests.concat(AddCard(deckStack, card, VGNIO.GetObjAttr(deckStack, 'cards').length));
         }
       }
       SendRequests(requests);
@@ -139,9 +141,10 @@ function RecallCards(deck){
   }});
   tl.pause();
   var otherStacks = {};
+  var looseCards = false;
   var requests = [];
   for(card of cardsInDeck){
-    if(!deckStack || !VGNIO.GetObjAttr(deckStack, 'cards').includes(card)){
+    if(!deckStack || !deckStackArr.includes(card)){
       var cardParent = VGNIO.GetObjAttr(card, 'parentObj');
       if(cardParent && cardParent != deckStack){
         if(cardParent in otherStacks){
@@ -151,17 +154,28 @@ function RecallCards(deck){
           otherStacks[cardParent] = [card];
         }
       }
+      else{
+        looseCards = true;
+      }
     }
   }
   for(otherStack in otherStacks){
-    requests.concat(RemoveCards(otherStack, otherStacks[otherStack]));
+    requests = requests.concat(RemoveCards(otherStack, otherStacks[otherStack]));
   }
-  var serverLoc = clientToRoomPosition(deckBounds);
-  for(card of cardsInDeck){
-    requests.push(moveObjectRequest(card, {duration: 1, xPre: '', x: serverLoc.x, yPre: '', y: serverLoc.y, rotation: 0, ease: 'power3'}));
-    tl.to(ClientObjectCollection[card], {duration: 1, ease: 'power3', x: deckBounds.x - VGNIO.Room.Bounds.x, y: deckBounds.y - VGNIO.Room.Bounds.y}, '<');
+  if(Object.keys(otherStacks).length !== 0 || looseCards){
+    var serverLoc = clientToRoomPosition(deckBounds);
+    for(card of cardsInDeck){
+      if(!deckStackArr || deckStackArr && !deckStackArr.includes(card)){
+        requests.push(moveObjectRequest(card, {duration: 1, x: serverLoc.x, y: serverLoc.y, rotation: 0, ease: 'power3'}));
+        tl.to(ClientObjectCollection[card], {duration: 1, ease: 'power3', rotation: 0, x: deckBounds.x - VGNIO.Room.Bounds.x, y: deckBounds.y - VGNIO.Room.Bounds.y}, '<');
+      }
+    }
+    tl.set({}, {}, '>0.5');
+    tl.resume();
+    SendRequests(requests);
   }
-  tl.set({}, {}, '>0.5');
-  tl.resume();
-  SendRequests(requests);
+  else{
+    tl.kill();
+  }
+
 }

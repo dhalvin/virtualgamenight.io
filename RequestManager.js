@@ -89,7 +89,9 @@ module.exports.onPushUpdateRequest = function(data, user, responses, callback){
 module.exports.onMoveRequest = function(data, user, responses, callback){
   ObjectStore.GetObjectProperties(user.roomid, data.uid, ['objData.user'], function(ObjProps){
     if(!ObjProps['objData.user'] || ObjProps['objData.user'] == user.userid){
-      ObjectStore.SetObjectProperty(user.roomid, data.uid, 'objData.pos', data.moveData);
+      if(data.moveData.x && data.moveData.y){
+        ObjectStore.SetObjectProperty(user.roomid, data.uid, 'objData.pos', {x: data.moveData.x, y: data.moveData.y});
+      }
       data.type = 'moveObject';
       data.user = user.userid;
       responses.push(data);

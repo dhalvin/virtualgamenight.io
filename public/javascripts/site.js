@@ -87,73 +87,72 @@ function strokeOnCanvas(uid, lineWidth, lineColor, start, end){
 }
 
 function SendRequests(requests){
-  console.log("Sending Requests: ", requests);
-  ws.send(JSON.stringify({requests: requests}));
+  if(requests.length > 0){
+    console.log("Sending Requests: ", requests);
+    ws.send(JSON.stringify({requests: requests}));
+  }
 }
 //A Click anywhere except the context menu closes the context menu
 window.addEventListener("mousedown", function(event){
   var cm = document.getElementById('context-menu');
   if(event.target !== cm && !cm.contains(event.target)){
+    ClearDealGhosts();
     $('#context-menu').removeClass("show");
   }
 });
 
-assignInputClickEvent($('#stack-explode'), function(event){
-  var currentContext = ClientObjectCollection[document.getElementById('stack-menu').currentContext];
-  var cards = VGNIO.GetObjAttr(currentContext.uid, 'cards');
-  var tl = gsap.timeline({onStart: function(){
-    deleteObjectRequest(currentContext.uid);
-  }});
-  tl.pause();
-  tl.set({}, {}, '>0.2');
-  var stackBounds = currentContext.getBoundingClientRect();
-  var RoomBounds = document.getElementById('room').getBoundingClientRect();
-  var xMin = Math.max(-500*VGNIO.Room.ClientSizeMult, RoomBounds.x - stackBounds.x);
-  var yMin = Math.max(-500*VGNIO.Room.ClientSizeMult, RoomBounds.top - stackBounds.top);
-  var xMax = Math.min(500*VGNIO.Room.ClientSizeMult,  RoomBounds.right - stackBounds.right);
-  var yMax = Math.min(500*VGNIO.Room.ClientSizeMult,  RoomBounds.bottom - stackBounds.bottom);
-  for(var i = 0; i < cards.length; i++){
-    const card = cards[i];
-    var cardObj = ClientObjectCollection[card];
-    var randX = xMin + Math.random()*(xMax-xMin);
-    var randY = yMin + Math.random()*(yMax-yMin);
-    tl.to(cardObj, {duration: 1, x: '+='+randX, top: '+='+randY, rotation: 0, ease: 'power4', 
-    onStart: function(x, y){
-      var serverLoc = ClientToServerPos({x: x, y: y});
-      moveObjectRequest(card, {duration: 1, xPre: '+=', x: serverLoc.x, topPre: '+=', top: serverLoc.y, rotation: 0, ease: 'power4'});
-    },onStartParams: [randX, randY]}, '<');
-  }
-  tl.resume();
-  document.getElementById('stack-menu').currentContext = null;
-});
-
 VGNIO.Room.ContextMenuSpecs = {
-  room_section: function(){
-    return {
-      attribute: null,
-      condition: null,
-      name: "Room",
-      getTarget: function(event){
-        return {clientX: event.clientX, clientY: event.clientY};
-      },
-      items: function(){
-        return [
-          {text: "Add New Deck", action: function(event){
-            SendRequests([createObjectRequest('Deck', {pos: clientToRoomPosition({x: event.target.clientX, y: event.target.clientY})})]);
-          }},
-          {text: "Reset Room", action: function(event){
-            alert("Reset Room");
-          }}
-        ]
+  default: {
+    room_section: function(){
+      return {
+        attribute: null,
+        condition: null,
+        name: "Room",
+        getTarget: function(event){
+          return {clientX: event.clientX, clientY: event.clientY};
+        },
+        items: function(){
+          return [
+            {text: "Add New Deck", type: 'default', action: function(event){
+              SendRequests([createObjectRequest('Deck', {pos: clientToRoomPosition({x: event.target.clientX, y: event.target.clientY})})]);
+            }},
+            {text: "Reset Room", type: 'default', action: function(event){
+              alert("Reset Room");
+            }}
+          ]
+        }
       }
     }
   }
 }
 $('#room').contextmenu(function(event){
-  VGNIO.ShowContextMenu('Room', Object.assign(event, {pointerEvent: {clientX: event.clientX, clientY: event.clientY}}));
+  if(event.pointerType != "touch"){
+    VGNIO.ShowContextMenu('Room', Object.assign(event, {pointerX: (event.pointerX ? event.pointerX : event.clientX), pointerY: (event.pointerY ? event.pointerY : event.clientY)}));
+    event.stopPropagation();
+  }
   event.preventDefault();
-  event.stopPropagation();
 });
+
+var contextTimer = null;
+document.getElementById('room').addEventListener('touchstart', function(event) {
+  contextTimer = setTimeout(function(event) {
+    VGNIO.ShowContextMenu('Room', Object.assign(event, {pointerX: event.touches[0].clientX, pointerY: event.touches[0].clientY}));
+  }, 1000, event)
+}, false);
+
+document.getElementById('room').addEventListener('touchend', function() {
+  if(contextTimer){
+    clearTimeout(contextTimer);
+    contextTimer = null;
+  }
+}, false);
+
+document.getElementById('room').addEventListener('touchmove', function() {
+  if(contextTimer){
+    clearTimeout(contextTimer);
+    contextTimer = null;
+  }
+}, false);
 
 ws.onmessage = function(e) {
   //console.log(e.data);
@@ -161,83 +160,99 @@ ws.onmessage = function(e) {
   console.log(dataArr);
   if(Array.isArray(dataArr)){
     for(data of dataArr){
-      if(data.user && data.user == MYUSERID && !data.updateSelf){return;}
-      if(data.type == "canvasStroke"){
-        strokeOnCanvas(data.uid, data.lineWidth, data.lineColor, data.start, data.end);
-      }
-      if(data.type == "createObject"){
-        console.log("Received Create Object Request: " , data);
-        for(obj of data.objects){
-          if(!(obj.uid in ObjectCollection))
-          {
-            VGNIO.CreateClientObject(obj.uid, obj.objType, obj.objData, obj.noSave);
-            //pullUpdateObjectRequest(data.uid);
-          }
-          else
-          {
-            console.log("Object " + obj.uid + " already exists...");
+      if(data.user && data.user == MYUSERID && !data.updateSelf){}
+      else{
+        if(data.type == "canvasStroke"){
+          strokeOnCanvas(data.uid, data.lineWidth, data.lineColor, data.start, data.end);
+        }
+        if(data.type == "createObject"){
+          console.log("Received Create Object Request: " , data);
+          for(obj of data.objects){
+            if(!(obj.uid in ObjectCollection))
+            {
+              VGNIO.CreateClientObject(obj.uid, obj.objType, obj.objData, obj.noSave);
+              //pullUpdateObjectRequest(data.uid);
+            }
+            else
+            {
+              console.log("Object " + obj.uid + " already exists...");
+            }
           }
         }
-      }
-      if(data.type == "deleteObject"){
-        //console.log("Received Delete Request: " + data);
-        var clientObj = ClientObjectCollection[data.uid];
-        for(deleteFunction of clientObj.deleteFunctions){
-          deleteFunction();
+        if(data.type == "deleteObject"){
+          //console.log("Received Delete Request: " + data);
+          var clientObj = ClientObjectCollection[data.uid];
+          for(deleteFunction of clientObj.deleteFunctions){
+            deleteFunction();
+          }
+          //clientObj.parentNode.removeChild(ClientObjectCollection[data.uid]);
+          clientObj.remove();
+          delete ClientObjectCollection[data.uid];
+          delete ObjectCollection[data.uid];
         }
-        //clientObj.parentNode.removeChild(ClientObjectCollection[data.uid]);
-        clientObj.remove();
-        delete ClientObjectCollection[data.uid];
-        delete ObjectCollection[data.uid];
-      }
-      if(data.type == "updateObject"){
-        //console.log("Received Update Request: " + data.uid);
-        //console.log(data);
-        UpdateObject(data.uid, data.objData, data.noSave);
-      }
-      if(data.type == "moveObject"){
-        console.log("Move reqeust rcvd", data);
-        gsap.to(ClientObjectCollection[data.uid], {duration: data.moveData.duration, x: data.moveData.xPre + data.moveData.x*VGNIO.Room.Bounds.w, y: data.moveData.yPre + data.moveData.y*VGNIO.Room.Bounds.h, rotation: data.moveData.rotation, ease: data.moveData.ease});
-      }
-      if(data.type == "userUpdate"){
-        if(data.action == "join"){
-          RoomInfo.users[data.user] = data.displayName;
-          var userStatusElem = document.getElementById('userstatus'+data.user);
-          if(userStatusElem){
-            userStatusElem.classList.remove('text-muted');
+        if(data.type == "updateObject"){
+          //console.log("Received Update Request: " + data.uid);
+          //console.log(data);
+          UpdateObject(data.uid, data.objData, data.noSave);
+        }
+        if(data.type == "moveObject"){
+          console.log("Move reqeust rcvd", data);
+          if('xPre' in data.moveData){
+            data.moveData.x = data.moveData.xPre + data.moveData.x*VGNIO.Room.Bounds.w;
+            delete data.moveData['xPre'];
           }
-          else{
-            $('#userList').append('<li id=userstatus'+data.user+' class="nav-item">'+RoomInfo.users[data.user]+'</li>');
+          else if('x' in data.moveData){
+            data.moveData.x = data.moveData.x*VGNIO.Room.Bounds.w;
           }
+          if('yPre' in data.moveData){
+            data.moveData.y = data.moveData.yPre + data.moveData.y*VGNIO.Room.Bounds.h;
+            delete data.moveData['yPre'];
+          }
+          else if('y' in data.moveData){
+            data.moveData.y = data.moveData.y*VGNIO.Room.Bounds.h;
+          }
+          gsap.to(ClientObjectCollection[data.uid], Object.assign({}, data.moveData));
+        }
+        if(data.type == "userUpdate"){
+          if(data.action == "join"){
+            RoomInfo.users[data.user] = data.displayName;
+            var userStatusElem = document.getElementById('userstatus'+data.user);
+            if(userStatusElem){
+              userStatusElem.classList.remove('text-muted');
+            }
+            else{
+              $('#userList').append('<li id=userstatus'+data.user+' class="nav-item">'+RoomInfo.users[data.user]+'</li>');
+            }
+            var $chatBox = $('#chatBox');
+            $chatBox.append(data.displayName  + ' has joined the room\n');
+            $chatBox.scrollTop($chatBox[0].scrollHeight);
+          }
+          else if(data.action == "leave"){
+            document.getElementById('userstatus'+data.user).classList.add('text-muted');
+            var $chatBox = $('#chatBox');
+            $chatBox.append(data.displayName  + ' has left the room\n');
+            $chatBox.scrollTop($chatBox[0].scrollHeight);
+          }
+        }
+        if(data.type == "msgRequest"){
           var $chatBox = $('#chatBox');
-          $chatBox.append(data.displayName  + ' has joined the room\n');
+          $chatBox.append(RoomInfo.users[data.user]  + ': ' + data.msg + '\n');
           $chatBox.scrollTop($chatBox[0].scrollHeight);
         }
-        else if(data.action == "leave"){
-          document.getElementById('userstatus'+data.user).classList.add('text-muted');
+        if(data.type == "RoomInit"){
+          RoomInfo.users = data.users;
+          RoomInfo.chatlog = data.chatlog;
+          var $userList = $('#userList');
+          for(user in RoomInfo.users){
+            $userList.append('<li id=userstatus'+user+' class="nav-item'+(data.activeUsers[user] ? '' : ' text-muted')+'">'+RoomInfo.users[user]+'</li>');
+            //$('#collapseUser').height('auto');
+          }
           var $chatBox = $('#chatBox');
-          $chatBox.append(data.displayName  + ' has left the room\n');
+          for(msg of RoomInfo.chatlog){
+            $chatBox.append(RoomInfo.users[msg.user] + ': ' + msg.msg + '\n');
+          }
           $chatBox.scrollTop($chatBox[0].scrollHeight);
         }
-      }
-      if(data.type == "msgRequest"){
-        var $chatBox = $('#chatBox');
-        $chatBox.append(RoomInfo.users[data.user]  + ': ' + data.msg + '\n');
-        $chatBox.scrollTop($chatBox[0].scrollHeight);
-      }
-      if(data.type == "RoomInit"){
-        RoomInfo.users = data.users;
-        RoomInfo.chatlog = data.chatlog;
-        var $userList = $('#userList');
-        for(user in RoomInfo.users){
-          $userList.append('<li id=userstatus'+user+' class="nav-item'+(data.activeUsers[user] ? '' : ' text-muted')+'">'+RoomInfo.users[user]+'</li>');
-          //$('#collapseUser').height('auto');
-        }
-        var $chatBox = $('#chatBox');
-        for(msg of RoomInfo.chatlog){
-          $chatBox.append(RoomInfo.users[msg.user] + ': ' + msg.msg + '\n');
-        }
-        $chatBox.scrollTop($chatBox[0].scrollHeight);
       }
     }
   }

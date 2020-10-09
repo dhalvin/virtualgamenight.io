@@ -93,6 +93,7 @@ VGNIO.Movable = new function(){
     }
     else{
       $('#context-menu').removeClass("show");
+      ClearDealGhosts();
       if(e.which == 1){
         VGNIO[VGNIO.GetObjType(this.target.getAttribute('id'))].OnClick(this);
       }
@@ -125,6 +126,7 @@ VGNIO.Movable = new function(){
       this.contextTimer = null;
     }
     $('#context-menu').removeClass("show");
+    ClearDealGhosts();
     this.contextJustUp = false;
     VGNIO.SetObjAttr(this.target.id, 'moving', true);
     SendRequests([pushUpdateObjectRequest(this.target.id, {'moving': true, 'user': {}})]);
@@ -163,9 +165,9 @@ VGNIO.Movable = new function(){
 function MoveObject(obj, pos, duration=0){
   VGNIO.GetObjAttr(obj.uid, 'pos').x = pos.x;
   VGNIO.GetObjAttr(obj.uid, 'pos').y = pos.y;
-  var room = document.getElementById('room').getBoundingClientRect();
+  //var room = document.getElementById('room').getBoundingClientRect();
   Draggable.get(obj).update();
-  gsap.to(obj, {duration: duration, x: pos.x * room.width, y: pos.y * room.height, onCompleteParams: [obj], onComplete: function(obj){
+  gsap.to(obj, {duration: duration, x: pos.x * VGNIO.Room.Bounds.w, y: pos.y * VGNIO.Room.Bounds.h, onCompleteParams: [obj], onComplete: function(obj){
     Draggable.get(obj).update();
   }});
 }

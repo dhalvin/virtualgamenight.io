@@ -154,6 +154,23 @@ document.getElementById('room').addEventListener('touchmove', function() {
   }
 }, false);
 
+ws.onclose = function(e) {
+  $('#room-spinner').show();
+  if (e.code != 1000) {
+    if (!navigator.onLine) {
+      document.getElementById('notifModalText').innerText = "Please check your Internet connection and try again.";
+      $('#notifModal').modal('show');
+    }
+    else{
+      document.getElementById('notifModalText').innerText = "Lost connection to server... Try refreshing the page.";
+      $('#notifModal').modal('show');
+    }
+ }
+}
+
+ws.onopen = function(e) {
+  $('#room-spinner').hide();
+}
 ws.onmessage = function(e) {
   //console.log(e.data);
   var dataArr = JSON.parse(e.data);
@@ -245,13 +262,13 @@ ws.onmessage = function(e) {
           var $userList = $('#userList');
           for(user in RoomInfo.users){
             $userList.append('<li id=userstatus'+user+' class="nav-item'+(data.activeUsers[user] ? '' : ' text-muted')+'">'+RoomInfo.users[user]+'</li>');
-            //$('#collapseUser').height('auto');
           }
           var $chatBox = $('#chatBox');
           for(msg of RoomInfo.chatlog){
             $chatBox.append(RoomInfo.users[msg.user] + ': ' + msg.msg + '\n');
           }
           $chatBox.scrollTop($chatBox[0].scrollHeight);
+          $('#room-spinner').hide();
         }
       }
     }
@@ -259,7 +276,7 @@ ws.onmessage = function(e) {
 };
 
 function SendChatMessage(message){
-  ws.send(JSON.stringify([{type: 'msgRequest', msg: message, updateSelf: true}]));
+  SendRequests([{type: 'msgRequest', msg: message, updateSelf: true}]);
 }
 
 $('#button-chatSend').on('click', function(){

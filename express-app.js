@@ -15,7 +15,12 @@ const express = require('express'),
   validator = require('express-validator'),
   common = require('./common'),
   RoomManager = require('./RoomManager'),
+  logger = require('./logger'),
   app = module.exports = express();
+
+redcli.on("error", function(error){
+  logger.error(error);
+});
 setup();
 
 function setup() {
@@ -27,7 +32,7 @@ function setup() {
     secret: common.SECRET,
     resave: false,
     saveUninitialized: false,
-    store: new redisStore({'client': redcli}),
+    store: new redisStore({client: redcli, ttl: 2592000}),
     cookie: {sameSite: true}
   }));
 
@@ -46,9 +51,6 @@ function setup() {
     }
   });
 
-  app.get('/test', function(req, res){
-    res.render('test', {title: "Test", scripts: '<script src="javascripts/test.js"></script>'});
-  })
   app.get('/join', function(req, res){
     //If we are already in the room, don't join again
     if('roomid' in req.session){
@@ -105,7 +107,7 @@ function setup() {
   
   app.get('/:id([A-Za-z0-9_-]{5})', function(req,res){
     if(req.session.roomid && req.session.roomid === req.params.id){
-      res.render('app', {title: 'Virtual Game Night', displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host'), userid: req.session.userid});
+      res.render('app', {title: 'Virtual Game Night', styles: '<link rel="stylesheet" type="text/css" href="stylesheets/noselect.css"/>', displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host'), userid: req.session.userid});
     }
     else{
       res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.params.id});
@@ -157,7 +159,7 @@ function setup() {
   });
 
   if (!module.parent) {
-    console.log('Running express without cluster.');
+    logger.info('Running express without cluster.');
     app.listen(process.env.PORT || 5000);
   }
 }

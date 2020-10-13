@@ -1,6 +1,12 @@
 const redis = require('redis'),
 redcli = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379'),
-RoomManager = require('./RoomManager');
+RoomManager = require('./RoomManager'),
+logger = require('./logger');
+
+redcli.on("error", function(error){
+  logger.error(error);
+});
+
 redis.add_command('JSON.SET');
 module.exports.GetObject = function(roomid, objectid, callback){
   redcli.send_command('JSON.GET', [roomid+objectid], function(err, reply){
@@ -14,7 +20,6 @@ module.exports.GetObject = function(roomid, objectid, callback){
 module.exports.GetObjectProperties = function(roomid, objectid, properties, callback){
   redcli.send_command('JSON.GET', [roomid+objectid].concat(properties), function(err, reply){
     if(err){
-      console.log(err);
       callback(0);
     }
     else if(reply){

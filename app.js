@@ -1,6 +1,7 @@
 var cluster = require('cluster'),
   app = require('./express-app'),
-  ws = require('./ws-app');
+  ws = require('./ws-app'),
+  logger = require('./logger');
 
 var workers = {},
   websockets = {},
@@ -9,7 +10,7 @@ var workers = {},
 function spawn(){
   var worker = cluster.fork();
   workers[worker.process.pid] = worker;
-  console.log('Spawning worker with id ' + worker.process.pid);
+  logger.info('Spawning worker with id ' + worker.process.pid);
   return worker;
 }
 
@@ -18,7 +19,7 @@ if (cluster.isMaster) {
   spawn();
   }
   cluster.on('death', function(worker) {
-  console.log('worker ' + worker.process.pid + ' died. spawning a new process...');
+  logger.info('worker ' + worker.process.pid + ' died. spawning a new process...');
   delete workers[worker.process.pid];
   spawn();
   });
@@ -30,11 +31,11 @@ if (cluster.isMaster) {
 
 function listWSConnections(){
   if(cluster.isWorker){
-    console.log('Worker #' + cluster.worker.process.pid + ' has WS connections:');
+    logger.debug('Worker #' + cluster.worker.process.pid + ' has WS connections:');
     for(room in ws.rooms){
-      console.log('ROOM:\t'+room);
+      logger.debug('ROOM:\t'+room);
     for(user in ws.rooms[room]){
-        console.log('\t'+user);
+        logger.debug('\t'+user);
       }
     }
   }

@@ -1,4 +1,5 @@
-const redis = require('redis'),
+const logger = require('./logger'),
+redis = require('redis'),
 redcli = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379'),
 mysql = require('mysql'),
 dbCon = mysql.createConnection({
@@ -7,6 +8,9 @@ dbCon = mysql.createConnection({
   password: process.env.MYSQL_PASS,
   database: 'vgnio',
   multipleStatements: true
+});
+redcli.on("error", function(error){
+  logger.error(error);
 });
 redis.add_command('JSON.DEL');
 module.exports.LoadRoom = function(roomid, callback){
@@ -24,16 +28,13 @@ module.exports.LoadRoom = function(roomid, callback){
         room.chatlog.push({'user': chat.userid, 'time': chat.sentTime, 'msg': chat.msg});
       }
       redcli.send_command('JSON.SET', ['room:'+roomid, '.', JSON.stringify(room), 'NX'], function(err, reply){
-        if(err){
-          console.log(err);
-        }
-        else if(reply){
+        if(reply){
           callback(reply);
         }
       });
     }
     else{
-      console.log(error);
+      logger.error(error);
       callback(false);
     }
   });
@@ -65,10 +66,7 @@ module.exports.UnloadRoom = function(roomid, forceUnload=false, callback){
 };
 module.exports.CreateRoom = function(roomid, callback){
   redcli.send_command('JSON.SET', ['room:'+roomid, '.', JSON.stringify({'users': {}, 'activeUsers': {}, 'objects': {}, 'chatlog': []}), 'NX'], function(err, reply){
-    if(err){
-      console.log(err);
-    }
-    else if(reply){
+    if(reply){
       callback(reply);
     }
   });
@@ -120,10 +118,7 @@ module.exports.UserLeave = function(roomid, userid){
 
 module.exports.GetUsers = function(roomid, callback){
   redcli.send_command('JSON.GET', ['room:'+roomid, 'users', 'activeUsers'], function(err, reply){
-    if(err){
-      console.log(err);
-    }
-    else if(reply){
+    if(reply){
       callback(JSON.parse(reply));
     }
   });
@@ -137,7 +132,6 @@ module.exports.RetrieveRoomDetails = function(roomid, callback){
 
   redcli.send_command('JSON.GET', ['room:'+roomid, 'chatlog'], function(err, reply){
     if(err){
-      console.log(err);
       callback(0);
     }
     module.exports.GetUsers(roomid, function(usersResult){
@@ -148,10 +142,7 @@ module.exports.RetrieveRoomDetails = function(roomid, callback){
 //EXPENSIVE
 module.exports.GetObjects = function(roomid, callback){
   redcli.send_command('JSON.OBJKEYS', ['room:'+roomid, 'objects'], function(err, reply){
-    if(err){
-      console.log(err);
-    }
-    else if(reply){
+    if(reply){
       if(reply.length > 0){
         for(var i = 0; i < reply.length; i++){
           reply[i] = roomid+reply[i];

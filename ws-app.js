@@ -1,3 +1,5 @@
+const logger = require('./logger');
+
 const WebSocket = require('ws'),
   redis = require('redis'),
   redcli = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379'),
@@ -9,7 +11,12 @@ const WebSocket = require('ws'),
   SyncObjectFactory = require('./SyncableObjects'),
   ObjectStore = require('./ObjectStore'),
   RoomManager = require('./RoomManager'),
-  Requests = require('./RequestManager');
+  Requests = require('./RequestManager'),
+  Logger = require('./logger');
+
+  redcli.on("error", function(error){
+    logger.error(error);
+  });
 
 var wsServer = null;
 const rooms = {};
@@ -37,7 +44,7 @@ function setup(wss){
     onUserConnected(user);
 
     socket.on("error", function(error){
-      console.log("Client Error: " + error);
+      logger.error(error);
     });
 
     socket.on("close", function(){
@@ -50,7 +57,7 @@ function setup(wss){
         Requests.handleRequests(data, user);
       }
       catch(err){
-        console.log('Error processing request: ', message, err);
+        logger.error('Error processing request: '+ message, {err});
       }
     });
   });
@@ -73,8 +80,8 @@ function onUserConnected(user){
   redcli.get('sess:'+user.sid, function(err, reply){
     if(reply){
       var session = JSON.parse(reply);
-      console.log("Client: " + session.displayName + " connected to room " + session.roomid);
-      SendMessage(session.roomid, {type: 'userUpdate', action: 'join', user: session.userid, displayName: session.displayName});
+      logger.info("Client: " + session.displayName + " connected to room " + session.roomid);
+      SendMessage(session.roomid, [{type: 'userUpdate', action: 'join', user: session.userid, displayName: session.displayName}]);
       redsub.subscribe('room'+session.roomid);
       if(session.roomid in rooms){
         rooms[session.roomid][user.sid] = user;
@@ -101,8 +108,7 @@ function onUserConnected(user){
       });
     }
     if(err){
-      console.log('Error retrieving session for sid: ' + user.sid);
-      console.log(err);
+      logger.error('Error retrieving session for sid: ' + user.sid, {err});
     }
   });
 }
@@ -111,8 +117,8 @@ function onUserDisconnected(user){
   redcli.get('sess:'+user.sid, function(err, reply){
     if(reply){
       var session = JSON.parse(reply);
-      console.log("Client: " + session.displayName + " disconnected from room " + session.roomid);
-      SendMessage(session.roomid, {type: 'userUpdate', action: 'leave', user: session.userid, displayName: session.displayName});
+      logger.info("Client: " + session.displayName + " disconnected from room " + session.roomid);
+      SendMessage(session.roomid, [{type: 'userUpdate', action: 'leave', user: session.userid, displayName: session.displayName}]);
       delete rooms[session.roomid][user.sid];
       if(Object.keys(rooms[session.roomid]).length == 0){
         delete rooms[session.roomid];

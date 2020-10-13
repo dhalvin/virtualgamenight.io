@@ -16,7 +16,14 @@ VGNIO.Card = new function(){
       obj.cardImg.style.height = VGNIO.Room.ClientSizeMult * VGNIO.Card.CardSize.h + 'px';
     };
     obj.updateFunctions.push(function(updateData){
-      if('faceUp' in updateData){
+      var okToUpdate = true;
+      if('private' in updateData && updateData.private || !('private' in updateData) && VGNIO.GetObjAttr(obj.uid, 'private')){
+        if('owner' in updateData && updateData.owner != MYUSERID || VGNIO.GetObjAttr(obj.uid, 'owner') && VGNIO.GetObjAttr(obj.uid, 'owner') != MYUSERID){
+          obj.cardImg.src = '/card/'+VGNIO.GetObjAttr(obj.uid, 'styleName') + '/card_back';
+          okToUpdate = false;
+        }
+      }
+      if(okToUpdate && 'faceUp' in updateData){
         var tl = gsap.timeline();
         tl.pause();
         var duration = 0.1;
@@ -59,7 +66,7 @@ VGNIO.Card = new function(){
       }
     });
     try{
-      if(startData.faceUp){
+      if((!startData.private || startData.private && startData.owner == MYUSERID) && startData.faceUp){
         obj.cardImg.src = '/card/'+VGNIO.GetObjAttr(obj.uid, 'styleName') + '/' + startData.cardLabel;
       }
       else{
@@ -148,7 +155,10 @@ VGNIO.Card = new function(){
             return [
               {text: "Flip Card", type: 'default', action: function(event){
                 SendRequests([pushUpdateObjectRequest(event.target.id, {faceUp : !VGNIO.GetObjAttr(event.target.id, 'faceUp'), cardLabel: {}}, true)]);
-              }}
+              }}/*,
+              {text: "Toggle Private", type: 'default', action: function(event){
+                SendRequests([pushUpdateObjectRequest(event.target.id, {private : !VGNIO.GetObjAttr(event.target.id, 'private')}, true)]);
+              }}*/
             ]
           }
         }

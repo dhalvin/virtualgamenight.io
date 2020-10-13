@@ -7,7 +7,7 @@
     </svg></span>
   </button>
 </nav>
-<main id="room" class="px-0"></main>
+<main id="room" class="px-0"><div id="room-spinner" class="spinner-border" role="status"><span class="sr-only">Room Loading...</span></div></main>
 <div class="row">
   <nav id="sidebarMenu" class="col-12 col-md-3 col-lg-2 bf-light sidebar">
     <div id="chatCard" class="card">
@@ -44,8 +44,25 @@
   </nav>
 </div>
 <div class="dropdown-menu" id="context-menu" data-reference="parent"></div>
+<!-- Modal -->
+<div class="modal fade" id="notifModal" tabindex="-1" aria-labelledby="notifModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="notifModalLabel">Connection Error</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id="notifModalText">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
-  //156-62
   document.getElementById('chatBox').addEventListener('resize', function(e){
     alert('boop');
   });
@@ -83,7 +100,7 @@
     }
   });
 </script>
-<script>const ws = new WebSocket("ws://{{serverAddress}}/"); let MYUSERID = "{{userid}}";</script>
+<script>const ws = new WebSocket("ws://{{serverAddress}}/"); const MYUSERID = "{{userid}}";</script>
 <script src="javascripts/Movable.js"></script>
 <script src="javascripts/Card.js"></script>
 <script src="javascripts/CardStack.js"></script>

@@ -1,4 +1,5 @@
 const { nanoid } = require('nanoid'),
+  logger = require('./logger'),
   fs = require('fs'),
   ObjectStore = require('./ObjectStore'),
   Requests = require('./RequestManager');
@@ -22,7 +23,8 @@ module.exports.ClientTrust = {
   movable: false,
   pos : true,
   locked : true,
-  owner : false,
+  private: true,
+  owner : true,
   user : false,
   lastUser : false,
   moving : true,
@@ -44,6 +46,11 @@ module.exports.NoSave = {
   Card: {lastUser: true, cardLabel: true},
   CardStack: {lastUser: true},
   Deck: {lastUser: true}
+}
+module.exports.PrivateAttrs = {
+  Card: ['cardLabel', 'faceUp'],
+  CardStack: [],
+  Deck: []
 }
 
 const ObjectTypes = {
@@ -124,7 +131,6 @@ const InitializeObject = {
       }
     };
     obj.objData.cardStack = nanoid(4);
-    console.log(cards, labels);
     CreateObject(obj.roomid, cards[0], 'Card', {pos: obj.objData.pos, cardLabel: labels[0], parentObj: obj.objData.cardStack}, onCreateCard);
     ObjectStore.SetObjectProperties(obj.roomid, obj.uid, {'objData.cards': obj.objData.cards});
   }
@@ -156,6 +162,7 @@ function MovableInterface(){
     movable: true,
     pos: {x: 0, y: 0},
     locked: false,
+    private: false,
     owner: null,
     user: null,
     lastUser: null,
@@ -173,6 +180,6 @@ function CreateObject(roomid, uid, objectType, objectData, completedAction){
     });
   }
   catch(err){
-    console.log('Failed to create object: ' + objectType, err);
+    logger.error('Failed to create object: ' + objectType, {err});
   }
 }

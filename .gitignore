@@ -2,6 +2,7 @@ node_modules/*
 package-lock.json
 .vscode/*
 .env
+*.log
 package-lock.json
 start.sh
 # Elastic Beanstalk Files

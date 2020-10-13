@@ -167,6 +167,9 @@ VGNIO.CardStack = new function(){
           },
           items: function(){
             return [
+              {text: "Toggle Private", type: 'default', action: function(event){
+                MakePrivate(event.target.id, !VGNIO.GetObjAttr(event.target.id, 'private'));
+              }},
               {text: "Arrange Stack", type: 'default', submenu: true, action: function(event){
                 VGNIO.ShowContextMenu('CardStack', event, 'arrangement');
               }},
@@ -552,12 +555,13 @@ function AddCard(stack, card, index, sendUpdate=false){
   stackObj.appendChild(cardObj);
   SnapObject(cardObj, stackObj.cardSlot);
   VGNIO.SetObjAttr(card, 'parentObj', stack);
+  VGNIO.SetObjAttr(card, 'private', VGNIO.GetObjAttr(stack, 'private'));
   stackObj.countText.nodeValue = cards.length;
   for(var i = index; i < cards.length; i++){
     ClientObjectCollection[cards[i]].style.zIndex = i;
     VGNIO.GetObjAttr(cards[i], 'pos').z = i;
   }
-  updates.push(pushUpdateObjectRequest(card, {parentObj: stack}));
+  updates.push(pushUpdateObjectRequest(card, {parentObj: stack, private: VGNIO.GetObjAttr(stack, 'private')}, true));
   updates.push(pushUpdateObjectRequest(stack, {cards: cards}));
   ArrangeStack(stackObj, VGNIO.GetObjAttr(stack, 'arrangement'));
   if(sendUpdate){
@@ -578,7 +582,7 @@ function RemoveCards(stack, removed, sendUpdate=false){
       $('#'+card).show();
       VGNIO.UnparentClientObject(cardObj);
       VGNIO.SetObjAttr(card, 'parentObj', null);
-      updates.push(pushUpdateObjectRequest(card, {parentObj: null}));
+      updates.push(pushUpdateObjectRequest(card, {parentObj: null, private: false}, true));
     }
     else{
       console.log("Tried to remove card from stack that was not in stack");
@@ -652,4 +656,12 @@ function ClearDealGhosts(){
   for(var i = ghosts.length; i > 0; i--){
     ghosts[i-1].remove();
   }
+}
+function MakePrivate(stack, private){
+  var requests = [];
+  for(card of VGNIO.GetObjAttr(stack, 'cards')){
+    requests.push(pushUpdateObjectRequest(card, {private : private}, true));
+  }
+  requests.push(pushUpdateObjectRequest(stack, {private : private}, true));
+  SendRequests(requests);
 }

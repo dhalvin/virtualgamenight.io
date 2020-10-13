@@ -19,13 +19,17 @@ module.exports.onCreateRequest = function(data, user, responses, callback){
 }
   
 module.exports.onPushUpdateRequest = function(data, user, responses, callback){
-  ObjectStore.GetObjectProperties(user.roomid, data.uid, ['objType', 'objData.user', 'objData.moving', 'objData.locked'], function(ObjProps){
+  ObjectStore.GetObjectProperties(user.roomid, data.uid, ['objType', 'objData.user', 'objData.moving', 'objData.locked', 'objData.owner', 'objData.private'], function(ObjProps){
     //Handles requests for data on the server where the clients do not save it (eg card labels)
     var propsToGet = [];
     for(attr in data.objData){
       if(attr in SyncObjectFactory.NoSave[ObjProps.objType]){
         propsToGet.push('objData.'+attr)
       }
+    }
+    //Get private properties
+    for(attr of SyncObjectFactory.PrivateAttrs[ObjProps.objType]){
+      propsToGet.push('objData.'+attr);
     }
     if(propsToGet.length > 0){
       ObjectStore.GetObjectProperties(user.roomid, data.uid, propsToGet, function(ObjProps2){
@@ -39,11 +43,15 @@ module.exports.onPushUpdateRequest = function(data, user, responses, callback){
   });
   function CompleteUpdateRequest(ObjProps){
     //If object doesn't have user, set user
+    //if(!ObjProps['objData.user'] && (!ObjProps['objData.owner'] || ObjProps['objData.owner'] && ObjProps['objData.owner'] == user.userid)){
     if(!ObjProps['objData.user']){
       ObjProps['objData.user'] = user.userid;
       ObjectStore.SetObjectProperty(user.roomid, data.uid, 'objData.user', user.userid);
     }
-    //Check that the user sending the request is owner
+
+    //Check that the user sending the request is current user AND
+    //If private user must be owner
+    //if(ObjProps['objData.user'] == user.userid && (!ObjProps['objData.private'] || !ObjProps['objData.owner'] || ObjProps['objData.private'] && ObjProps['objData.owner'] == user.userid)){
     if(ObjProps['objData.user'] == user.userid){
       updateProps = {};
       //Update trusted fields, discard untrusted fields in send back data
@@ -67,6 +75,22 @@ module.exports.onPushUpdateRequest = function(data, user, responses, callback){
           data.objData[attr] = ObjProps['objData.'+attr];
         }
       }
+
+      //Check for private to assign owner
+      if('private' in data.objData){
+        if(data.objData['private']){
+          updateProps['objData.owner'] = user.userid;
+          data.objData['owner'] = user.userid;
+        }
+        else{
+          updateProps['objData.owner'] = null;
+          data.objData['owner'] = null;
+          //Send back any private fields (which are now public!)
+          for(attr of SyncObjectFactory.PrivateAttrs[ObjProps.objType]){
+            data.objData[attr] = ObjProps['objData.'+attr];
+          }
+        }
+      }
       //Check release requested
       //If not moving or locked, do not assign user
       if(('releaseUser' in data.objData && data.objData.releaseUser) || 'objData.moving' in ObjProps && !ObjProps['objData.moving'] && 'objData.locked' in ObjProps && !ObjProps['objData.locked']){
@@ -79,10 +103,11 @@ module.exports.onPushUpdateRequest = function(data, user, responses, callback){
       data.type = 'updateObject';
       data.user = user.userid;
       data.noSave = SyncObjectFactory.NoSave[ObjProps.objType];
+      data.private = SyncObjectFactory.PrivateAttrs[ObjProps.objType];
       responses.push(data);
-      callback();
       //WSServer.SendMessage(user.roomid, data);
     }
+    callback();
   }
 }
   

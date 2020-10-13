@@ -11,6 +11,16 @@ VGNIO.Movable = new function(){
     VGNIO.AttachToRoom(movableObj);
     VGNIO.Movable.InitDraggable(movableObj, {});
     movableObj.updateFunctions.push(function(updateData){
+      if('private' in updateData){
+        if(updateData.private && updateData.owner != MYUSERID){
+          Draggable.get(movableObj).disable();
+          gsap.to(movableObj, {duration: 0.5, opacity: 0.7});
+        }
+        else if(updateData.private === false){
+          gsap.to(movableObj, {duration: 0.5, opacity: 1});
+          Draggable.get(movableObj).enable();
+        }
+      }
       if('pos' in updateData){
         MoveObject(movableObj, updateData.pos);
         //Update popover position
@@ -44,6 +54,10 @@ VGNIO.Movable = new function(){
   
     if('pos' in ObjectCollection[movableObj.uid].objData){
       MoveObject(movableObj, VGNIO.GetObjAttr(movableObj.uid, 'pos'));
+    }
+    if(VGNIO.GetObjAttr(movableObj.uid, 'private') && VGNIO.GetObjAttr(movableObj.uid, 'owner') != MYUSERID){
+      gsap.to(movableObj, {duration: 0.5, opacity: 0.7});
+      Draggable.get(movableObj).disable();
     }
     return movableObj;
   }

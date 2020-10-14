@@ -173,7 +173,7 @@ module.exports.onRequest = {
 module.exports.handleRequests = function(data, user){
   var r = 0;
   var responses = [];
-  if('requests' in data){
+  if(Array.isArray(data['requests'])){
     module.exports.onRequest[data.requests[r].type](data.requests[r], user, responses, function(){
       function nextResponse(){
         r++;

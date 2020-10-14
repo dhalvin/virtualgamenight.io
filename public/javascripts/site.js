@@ -173,7 +173,7 @@ ws.onclose = function(e) {
 ws.onopen = function(e) {
   $('#room-spinner').hide();
   HeartbeatTimer = setInterval(function(){
-    ws.send(JSON.stringify({requests: []}));
+    ws.send(JSON.stringify({}));
   }, 30000);
 }
 ws.onmessage = function(e) {

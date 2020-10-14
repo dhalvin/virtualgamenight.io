@@ -2,6 +2,7 @@ const RoomInfo = {users: {}, chatlog: []};
 const ObjectCollection = {};
 const ClientObjectCollection = {};
 const AnimationUnit = 25;
+var HeartbeatTimer = null;
 
 VGNIO.Room = {
   AspectRatio: 16/9,
@@ -156,6 +157,7 @@ document.getElementById('room').addEventListener('touchmove', function() {
 
 ws.onclose = function(e) {
   $('#room-spinner').show();
+  clearInterval(HeartbeatTimer);
   if (e.code != 1000) {
     if (!navigator.onLine) {
       document.getElementById('notifModalText').innerText = "Please check your Internet connection and try again.";
@@ -170,6 +172,9 @@ ws.onclose = function(e) {
 
 ws.onopen = function(e) {
   $('#room-spinner').hide();
+  HeartbeatTimer = setInterval(function(){
+    ws.send(JSON.stringify({requests: []}));
+  }, 30000);
 }
 ws.onmessage = function(e) {
   //console.log(e.data);

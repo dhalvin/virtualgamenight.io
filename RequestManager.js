@@ -173,16 +173,18 @@ module.exports.onRequest = {
 module.exports.handleRequests = function(data, user){
   var r = 0;
   var responses = [];
-  module.exports.onRequest[data.requests[r].type](data.requests[r], user, responses, function(){
-    function nextResponse(){
-      r++;
-      if(r < data.requests.length){
-        module.exports.onRequest[data.requests[r].type](data.requests[r], user, responses, nextResponse);
+  if('type' in data.requests){
+    module.exports.onRequest[data.requests[r].type](data.requests[r], user, responses, function(){
+      function nextResponse(){
+        r++;
+        if(r < data.requests.length){
+          module.exports.onRequest[data.requests[r].type](data.requests[r], user, responses, nextResponse);
+        }
+        else {
+          WSServer.SendMessage(user.roomid, responses);
+        }
       }
-      else {
-        WSServer.SendMessage(user.roomid, responses);
-      }
-    }
-    nextResponse();
-  });
+      nextResponse();
+    });
+  }
 }

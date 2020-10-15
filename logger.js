@@ -3,17 +3,17 @@ const logger = createLogger({
     level: (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
     transports: [
         new transports.File({ 
-            filename: 'error.log', 
+            filename: 'log/error.log', 
             level: 'error',
             format: format.combine(format.timestamp(), format.errors({ stack: true }), format.prettyPrint())}),
         new transports.File({ 
-            filename: 'combined.log', 
+            filename: 'log/combined.log', 
             level: 'info',
             format: format.combine(format.timestamp(), format.prettyPrint())})
     ],
     exceptionHandlers: [
         new transports.File({
-            filename: 'exceptions.log',
+            filename: 'log/exceptions.log',
             format: format.combine(format.timestamp(), format.errors({ stack: true }), format.prettyPrint())
         })
     ]

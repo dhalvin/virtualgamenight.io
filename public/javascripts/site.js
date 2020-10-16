@@ -110,12 +110,13 @@ VGNIO.Room.ContextMenuSpecs = {
         condition: null,
         name: "Room",
         getTarget: function(event){
-          return {clientX: event.clientX, clientY: event.clientY};
+          //return {clientX: event.clientX, clientY: event.clientY};
+          return {pointerX: event.pointerX, pointerY: event.pointerY};
         },
         items: function(){
           return [
             {text: "Add New Deck", type: 'default', action: function(event){
-              SendRequests([createObjectRequest('Deck', {pos: clientToRoomPosition({x: event.target.clientX, y: event.target.clientY})})]);
+              SendRequests([createObjectRequest('Deck', {pos: clientToRoomPosition({x: event.pointerX, y: event.pointerX})})]);
             }},
             {text: "Reset Room", type: 'default', action: function(event){
               alert("Reset Room");

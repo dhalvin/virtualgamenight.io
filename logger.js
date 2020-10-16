@@ -4,7 +4,7 @@ const logger = createLogger({
     transports: [
         new transports.File({ 
             filename: 'log/error.log', 
-            level: 'error',
+            level: 'warning',
             format: format.combine(format.timestamp(), format.errors({ stack: true }), format.prettyPrint())}),
         new transports.File({ 
             filename: 'log/combined.log', 

@@ -33,33 +33,42 @@ function setup(wss){
     BroadcastToRoom(channel.substring('room'.length), message);
   });
   wss.on("connection", function(socket, req){
-    var sid = cookieParser.signedCookie(cookie.parse(req.headers.cookie)['connect.sid'], common.SECRET);
-    const user = {
-      'sid': sid,
-      'socket': socket,
-      'displayName': '',
-      'userid': '',
-      'roomid': ''
+    logger.warn('Websocket connection: ');
+    logger.warn(req.headers);
+    logger.warn(req.headers.cookie);
+    try {
+      var sid = cookieParser.signedCookie(cookie.parse(req.headers.cookie)['connect.sid'], common.SECRET);
+      const user = {
+        'sid': sid,
+        'socket': socket,
+        'displayName': '',
+        'userid': '',
+        'roomid': ''
+      }
+      onUserConnected(user);
+  
+      socket.on("error", function(error){
+        logger.error(error);
+      });
+  
+      socket.on("close", function(){
+        onUserDisconnected(user);
+      });
+  
+      socket.on("message", function(message){
+        var data = JSON.parse(message);
+        try{
+          Requests.handleRequests(data, user);
+        }
+        catch(err){
+          logger.error('Error processing request: '+ message, {err});
+        }
+      });
     }
-    onUserConnected(user);
-
-    socket.on("error", function(error){
-      logger.error(error);
-    });
-
-    socket.on("close", function(){
-      onUserDisconnected(user);
-    });
-
-    socket.on("message", function(message){
-      var data = JSON.parse(message);
-      try{
-        Requests.handleRequests(data, user);
-      }
-      catch(err){
-        logger.error('Error processing request: '+ message, {err});
-      }
-    });
+    catch(err){
+      logger.error(err);
+      socket.close();
+    }
   });
 }
 

@@ -155,10 +155,7 @@ VGNIO.Card = new function(){
             return [
               {text: "Flip Card", type: 'default', action: function(event){
                 SendRequests([pushUpdateObjectRequest(event.target.id, {faceUp : !VGNIO.GetObjAttr(event.target.id, 'faceUp'), cardLabel: {}}, true)]);
-              }}/*,
-              {text: "Toggle Private", type: 'default', action: function(event){
-                SendRequests([pushUpdateObjectRequest(event.target.id, {private : !VGNIO.GetObjAttr(event.target.id, 'private')}, true)]);
-              }}*/
+              }}
             ]
           }
         }

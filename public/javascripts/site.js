@@ -93,6 +93,10 @@ function SendRequests(requests){
     ws.send(JSON.stringify({requests: requests}));
   }
 }
+
+document.getElementById('createDeckButton').addEventListener("click", function(event){
+  SendRequests([createObjectRequest('Deck', {pos: {x: 0.3+Math.random()*0.4, y: 0.3+Math.random()*0.4}})]);
+});
 //A Click anywhere except the context menu closes the context menu
 window.addEventListener("mousedown", function(event){
   var cm = document.getElementById('context-menu');
@@ -116,11 +120,10 @@ VGNIO.Room.ContextMenuSpecs = {
         items: function(){
           return [
             {text: "Add New Deck", type: 'default', action: function(event){
-              SendRequests([createObjectRequest('Deck', {pos: clientToRoomPosition({x: event.pointerX, y: event.pointerX})})]);
-            }},
+              SendRequests([createObjectRequest('Deck', {pos: clientToRoomPosition({x: event.pointerX, y: event.pointerY})})]);
+            }}/*,
             {text: "Reset Room", type: 'default', action: function(event){
-              alert("Reset Room");
-            }}
+            }}*/
           ]
         }
       }

@@ -24,7 +24,7 @@ if (cluster.isMaster) {
   spawn();
   });
 } else {
-  server = app.listen(process.env.PORT || 5000)
+  var server = app.listen(process.env.PORT || 5000)
   cluster.worker.wsServer = ws.start(server);
   //listWSConnections();
 }

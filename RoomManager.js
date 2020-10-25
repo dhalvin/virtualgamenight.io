@@ -2,12 +2,34 @@ const logger = require('./logger'),
 redis = require('redis'),
 redcli = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379'),
 mysql = require('mysql'),
-dbCon = mysql.createConnection({
+dbConfig = {
   host: process.env.MYSQL_URI,
   user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASS,
   database: 'vgnio',
   multipleStatements: true
+};
+var dbCon = mysql.createConnection(dbConfig);
+
+function handleDBDisconnect() {
+  dbCon = mysql.createConnection(dbConfig);
+  dbCon.connect(function(error){
+    if(error){
+      logger.error('error reconnecting to DB')
+      logger.error(error);
+      setTimeout(handleDBDisconnect, 2000);
+    }
+  });
+}
+
+dbCon.on('error', function(error){
+  logger.error(error);
+  if(error.code === 'PROTOCOL_CONNECTION_LOST'){
+    handleDBDisconnect();
+  }
+  else {
+    throw error;
+  }
 });
 redcli.on("error", function(error){
   logger.error(error);
@@ -43,23 +65,33 @@ module.exports.UnloadRoom = function(roomid, forceUnload=false, callback){
   redcli.send_command('JSON.OBJLEN', ['room:'+roomid, 'activeUsers'], function(err, reply){
     if(forceUnload || reply === 0){
       dbCon.query('REPLACE INTO Room (id, expire) VALUES (?, ?)', [roomid, new Date().getTime() + 604800000], function(error, result, fields){
-        module.exports.RetrieveRoomDetails(roomid, function(room){
-          for(user in room.users){
-            dbCon.query('REPLACE INTO UserRoom (roomid, userid, displayName) VALUES (?, ?, ?)', [roomid, user, room.users[user]]);
-          }
-          for(chat of room.chatlog){
-            dbCon.query('INSERT IGNORE INTO Chat (roomid, userid, sentTime, msg) VALUES (?, ?, ?, ?)', [roomid, chat.user, chat.time, chat.msg]);
-          }
-          redcli.expire('room:'+roomid, 30);
-          module.exports.GetObjects(roomid, function(objs){
-            for(obj of objs){
-              let objUid = obj.uid;
-              dbCon.query('REPLACE INTO RoomItems (roomid, itemid, type, data) VALUES (?, ?, ?, ?)', [roomid, obj.uid, obj.objType, JSON.stringify(obj.objData)], function(error, result, fields){
-                redcli.expire(roomid+objUid, 30);
-              });
+        if(!error){
+          module.exports.RetrieveRoomDetails(roomid, function(room){
+            for(user in room.users){
+              dbCon.query('REPLACE INTO UserRoom (roomid, userid, displayName) VALUES (?, ?, ?)', [roomid, user, room.users[user]]);
             }
-          });
-        })
+            for(chat of room.chatlog){
+              dbCon.query('INSERT IGNORE INTO Chat (roomid, userid, sentTime, msg) VALUES (?, ?, ?, ?)', [roomid, chat.user, chat.time, chat.msg]);
+            }
+            redcli.expire('room:'+roomid, 30);
+            module.exports.GetObjects(roomid, function(objs){
+              for(obj of objs){
+                let objUid = obj.uid;
+                dbCon.query('REPLACE INTO RoomItems (roomid, itemid, type, data) VALUES (?, ?, ?, ?)', [roomid, obj.uid, obj.objType, JSON.stringify(obj.objData)], function(error, result, fields){
+                  if(!error){
+                    redcli.expire(roomid+objUid, 30);
+                  }
+                  else{
+                    logger.error(error);
+                  }
+                });
+              }
+            });
+          })
+        }
+        else{
+          logger.error(error);
+        }
       });
     }
   });
@@ -77,7 +109,13 @@ module.exports.RoomExists = function(roomid, callback){
     if(reply === null){
       //Returns 1 if room is in db, 0 otherwise
       dbCon.query('SELECT COUNT(1) FROM Room WHERE id = ?', [roomid], function(error, result, fields){
-        callback(result[0]['COUNT(1)']);
+        if(!error){
+          callback(result[0]['COUNT(1)']);
+        }
+        else{
+          logger.error(error);
+          callback(false);
+        }
       });
     }
     else{

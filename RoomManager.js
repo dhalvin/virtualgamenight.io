@@ -9,10 +9,21 @@ dbConfig = {
   database: 'vgnio',
   multipleStatements: true
 };
-var dbCon = mysql.createConnection(dbConfig);
-
-function handleDBDisconnect() {
+var dbCon;
+function createDBConnect(){
   dbCon = mysql.createConnection(dbConfig);
+  dbCon.on('error', function(error){
+    logger.error(error);
+    if(error.code === 'PROTOCOL_CONNECTION_LOST'){
+      handleDBDisconnect();
+    }
+    else {
+      throw error;
+    }
+  });
+}
+function handleDBDisconnect() {
+  createDBConnect();
   dbCon.connect(function(error){
     if(error){
       logger.error('error reconnecting to DB')
@@ -21,16 +32,8 @@ function handleDBDisconnect() {
     }
   });
 }
+createDBConnect();
 
-dbCon.on('error', function(error){
-  logger.error(error);
-  if(error.code === 'PROTOCOL_CONNECTION_LOST'){
-    handleDBDisconnect();
-  }
-  else {
-    throw error;
-  }
-});
 redcli.on("error", function(error){
   logger.error(error);
 });

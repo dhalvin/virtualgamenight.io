@@ -91,7 +91,6 @@ VGNIO.CardStack = new function(){
       var parentObj = VGNIO.GetObjAttr(obj.uid, 'parentObj');
       if(parentObj){
         VGNIO.SetObjAttr(parentObj, 'cardStack', null);
-        ObjectCollection[parentObj].set('cardStack', null);
       }
     });
     obj.attachCards();
@@ -104,9 +103,7 @@ VGNIO.CardStack = new function(){
     return obj;
   };
 
-  this.OnClick = function(event){
-    alert('click for cardstack');
-  }
+  this.OnClick = function(event){}
   
   this.OnRightClick = function(event){
     VGNIO.ShowContextMenu('CardStack', event);

@@ -1,4 +1,6 @@
 const logger = require('./logger'),
+SyncObjectFactory = require('./SyncableObjects'),
+{ nanoid } = require('nanoid'),
 redis = require('redis'),
 redcli = redis.createClient(process.env.REDIS_URI || 'redis://localhost:6379'),
 mysql = require('mysql'),
@@ -102,6 +104,8 @@ module.exports.UnloadRoom = function(roomid, forceUnload=false, callback){
 module.exports.CreateRoom = function(roomid, callback){
   redcli.send_command('JSON.SET', ['room:'+roomid, '.', JSON.stringify({'users': {}, 'activeUsers': {}, 'objects': {}, 'chatlog': []}), 'NX'], function(err, reply){
     if(reply){
+      var uid = nanoid(4);
+      SyncObjectFactory.CreateObject(roomid, uid, 'Deck', {'pos': {x: 0.5, y: 0.5}}, function(){});
       callback(reply);
     }
   });

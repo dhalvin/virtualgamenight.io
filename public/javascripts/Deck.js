@@ -74,9 +74,7 @@ VGNIO.Deck = new function(){
     }
     return obj;
   };
-  this.OnClick = function(event){
-    alert('click for deck');
-  }
+  this.OnClick = function(event){}
   
   this.OnRightClick = function(event){
     VGNIO.ShowContextMenu('Deck', event);
@@ -106,6 +104,9 @@ VGNIO.Deck = new function(){
             return [
               {text: "Recall Cards", type: 'default', action: function(event){
                 RecallCards(event.target.id);
+              }},
+              {text: "Delete Deck", type: 'default', action: function(event){
+                DeleteDeck(event.target.id);
               }}
             ]
           }
@@ -115,12 +116,35 @@ VGNIO.Deck = new function(){
   }
 };
 
+function FindCards(deck, includeSelf=false){
+  var cardStacks = {loose: []};
+  var cardsInDeck = VGNIO.GetObjAttr(deck, 'cards');
+  var deckStack = VGNIO.GetObjAttr(deck, 'cardStack');
+  var deckStackArr = VGNIO.GetObjAttr(deckStack, 'cards');
+  for(card of cardsInDeck){
+    if(!deckStack || !deckStackArr.includes(card) || includeSelf){
+      var cardParent = VGNIO.GetObjAttr(card, 'parentObj');
+      if(cardParent && cardParent != deckStack){
+        if(cardParent in cardStacks){
+          cardStacks[cardParent].push(card);
+        }
+        else{
+          cardStacks[cardParent] = [card];
+        }
+      }
+      else{
+        cardStacks.loose.push(card);
+      }
+    }
+  }
+  return cardStacks;
+}
+
 function RecallCards(deck){
   var cardsInDeck = VGNIO.GetObjAttr(deck, 'cards');
   var deckObj = document.getElementById(deck);
   var deckBounds = deckObj.getBoundingClientRect();
   var deckStack = VGNIO.GetObjAttr(deck, 'cardStack');
-  var deckStackArr = VGNIO.GetObjAttr(deckStack, 'cards');
   var tl = gsap.timeline({delay: 0.25, onComplete: function(){
     var requests = [];
     if(deckStack && deckStack in ObjectCollection){
@@ -140,32 +164,17 @@ function RecallCards(deck){
     }
   }});
   tl.pause();
-  var otherStacks = {};
-  var looseCards = false;
+  var otherStacks = FindCards(deck);
   var requests = [];
-  for(card of cardsInDeck){
-    if(!deckStack || !deckStackArr.includes(card)){
-      var cardParent = VGNIO.GetObjAttr(card, 'parentObj');
-      if(cardParent && cardParent != deckStack){
-        if(cardParent in otherStacks){
-          otherStacks[cardParent].push(card);
-        }
-        else{
-          otherStacks[cardParent] = [card];
-        }
-      }
-      else{
-        looseCards = true;
-      }
+  for(otherStack in otherStacks){
+    if(otherStack != 'loose'){
+      requests = requests.concat(RemoveCards(otherStack, otherStacks[otherStack]));
     }
   }
-  for(otherStack in otherStacks){
-    requests = requests.concat(RemoveCards(otherStack, otherStacks[otherStack]));
-  }
-  if(Object.keys(otherStacks).length !== 0 || looseCards){
+  if(Object.keys(otherStacks).length > 1 || otherStacks.loose.length > 0){
     var serverLoc = clientToRoomPosition(deckBounds);
-    for(card of cardsInDeck){
-      if(!deckStackArr || deckStackArr && !deckStackArr.includes(card)){
+    for(stack in otherStacks){
+      for(card of otherStacks[stack]){
         requests.push(moveObjectRequest(card, {duration: 1, x: serverLoc.x, y: serverLoc.y, rotation: 0, ease: 'power3'}));
         tl.to(ClientObjectCollection[card], {duration: 1, ease: 'power3', rotation: 0, x: deckBounds.x - VGNIO.Room.Bounds.x, y: deckBounds.y - VGNIO.Room.Bounds.y}, '<');
       }
@@ -177,5 +186,24 @@ function RecallCards(deck){
   else{
     tl.kill();
   }
+}
 
+function DeleteDeck(deck){
+  var cardStacks = FindCards(deck, true);
+  var cardsInDeck = VGNIO.GetObjAttr(deck, 'cards');
+  var deckStack = VGNIO.GetObjAttr(deck, 'cardStack');
+  var requests = [];
+  for(stack in cardStacks){
+    if(stack != 'loose'){
+      requests = requests.concat(RemoveCards(stack, cardStacks[stack]));
+    }
+  }
+  for(card of cardsInDeck){
+    requests.push(deleteObjectRequest(card));
+  }
+  if(deckStack){
+    requests.push(deleteObjectRequest(deckStack));
+  }
+  requests.push(deleteObjectRequest(deck));
+  SendRequests(requests);
 }

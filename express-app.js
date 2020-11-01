@@ -43,11 +43,11 @@ function setup() {
 
   app.get('/', function(req, res){
     if('errors' in req.session){
-      res.render('index', {title: 'Virtual Game Night', errors: JSON.parse(req.session.errors)});
+      res.render('index', {title: 'Virtual Game Night', styles: ['stylesheets/index.css'], errors: JSON.parse(req.session.errors)});
       delete req.session.errors;
     }
     else{
-      res.render('index', {title: 'Virtual Game Night', quip: 'Together but not!'});
+      res.render('index', {title: 'Virtual Game Night', styles: ['stylesheets/index.css'], quip: 'Together but not!'});
     }
   });
 
@@ -67,7 +67,7 @@ function setup() {
   ], function(req, res){
     //Render the page with any errors that exist
     if('errors' in req.session){
-      res.render('join', {title: 'Virtual Game Night: Joining...', errors: JSON.parse(req.session.errors)});
+      res.render('join', {title: 'Virtual Game Night: Joining...', styles: ['stylesheets/index.css'], errors: JSON.parse(req.session.errors)});
       delete req.session.errors;
     }
     else {
@@ -76,7 +76,7 @@ function setup() {
           //If our new room id collides with an existing one, try again
           RoomManager.CreateRoom(newRoomID, function(result){
             if(result && result === 'OK'){
-              res.render('join', {title: 'Virtual Game Night: Creating...', roomid: newRoomID});
+              res.render('join', {title: 'Virtual Game Night: Creating...', styles: ['stylesheets/index.css'], roomid: newRoomID});
             }
             else{
               res.redirect(307, '/join');
@@ -97,20 +97,22 @@ function setup() {
               res.redirect('/');
             }
             else{
-              res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.body.roomid});
+              res.render('join', {title: 'Virtual Game Night: Joining...', styles: ['stylesheets/index.css'], roomid: req.body.roomid});
             }
           });
         }
       }
     }
   });
-  
+  app.get('/about', function(req, res){
+    res.render('about', {title: 'About Virtual Game Night', styles: ['stylesheets/index.css']});
+  });
   app.get('/:id([A-Za-z0-9_-]{5})', function(req,res){
     if(req.session.roomid && req.session.roomid === req.params.id){
-      res.render('app', {title: 'Virtual Game Night', styles: '<link rel="stylesheet" type="text/css" href="stylesheets/noselect.css"/>', displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host'), userid: req.session.userid});
+      res.render('app', {title: 'Virtual Game Night: '+req.session.roomid, styles: ['stylesheets/app.css', 'stylesheets/noselect.css'], displayName: req.body.displayName, roomid: req.body.roomid, serverAddress: req.get('host'), userid: req.session.userid, sidebar: true});
     }
     else{
-      res.render('join', {title: 'Virtual Game Night: Joining...', roomid: req.params.id});
+      res.render('join', {title: 'Virtual Game Night: Joining...', styles: ['stylesheets/index.css'], roomid: req.params.id});
     }
   });
 

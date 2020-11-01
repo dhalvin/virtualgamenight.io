@@ -1,66 +1,79 @@
-  
-<div id="title" class="jumbotron pb-3">
-  <h1>Virtual Game Night</h1>
-  <p class="text-muted">{{quip}}</p>
-  <p class="text-muted">	&#169; 2020 David Horning</p>
+<div class="row px-2 py-4 p-md-5 bg-secondary text-light">
+  <div class="col-12 col-md-6">
+    <h1>Virtual Game Night</h1>
+    <p>{{quip}}</p>
+    <hr/>
+    <div class="card text-dark shadow">
+    <h5 class="card-header">Joining Room: {{roomid}}</h5>
+    <div class="card-body">
+      <h2>Please enter a name</h2>
+      <h5>(Other players in the room will see this)</h5>
+      <form action="app" method="post">
+        <input name="roomid" type="hidden" value="{{roomid}}">
+        {{#each errors}}
+        <div class="alert alert-danger" role="alert">
+          {{msg}}
+        </div>
+        {{/each}}
+      <div class="input-group mb-3">
+        <div class="input-group-prepend">
+        <span class="input-group-text" id="inputGroup-sizing-default">Display Name</span>
+        </div>
+        <input type="text" name="displayName" class="form-control" required="required" aria-requires="true" aria-label="Display name input" aria-describedby="inputGroup-sizing-default">
+        <div class="input-group-append">
+        <input class="btn btn-primary" type="submit" value="Join">
+        </div>
+      </div>
+      </form>
+    </div>
+    </div>
+    <hr/>
+  </div>
 </div>
-<div class="container-flex text-light px-4">
-  <h2>Joining Room: {{roomid}}</h2>
-  <form action="app" method="post">
-    <input name="roomid" type="hidden" value="{{roomid}}">
-    {{#each errors}}
-    <div class="alert alert-danger" role="alert">
-      {{msg}}
-    </div>
-    {{/each}}
-  <div class="input-group mb-3">
-    <div class="input-group-prepend">
-    <span class="input-group-text" id="inputGroup-sizing-default">Display Name</span>
-    </div>
-    <input type="text" name="displayName" class="form-control" required="required" aria-requires="true" aria-label="Display name input" aria-describedby="inputGroup-sizing-default">
-    <div class="input-group-append">
-    <input class="btn btn-primary" type="submit" value="Join">
-    </div>
+<div class="row px-2 py-4 p-md-5 bg-secondary text-light">
+  <div class="col-12">
+    <hr/>
+    <footer>&#169; 2020 David Horning</footer>
   </div>
-  </form>
-  <!---
-  <div class="input-group mb-3">
-    <div class="input-group-prepend">
-    <span class="input-group-text" id="inputGroup-sizing-default">Display Color</span>
-    </div>
-    <div class="container form-control" id="colorSelection"></div>
-    <input type="hidden" name="playerColor" id="playerColor">
+</div>
+<!---
+<div class="input-group mb-3">
+  <div class="input-group-prepend">
+  <span class="input-group-text" id="inputGroup-sizing-default">Display Color</span>
   </div>
-  </form>
+  <div class="container form-control" id="colorSelection"></div>
+  <input type="hidden" name="playerColor" id="playerColor">
+</div>
+</form>
 </div>
 <script>
-  createColorSelector();
-  function createColorSelector()
-  {
-  var colSel = document.getElementById("colorSelection");
-  var cv = document.createElement("canvas");
-  cv.setAttribute('width', 210);
-  cv.setAttribute('height', 25);
-  var colors = ['#F6511D', '#FFB400', '#00A6ED', '#7FB800', '#0D2C54', '#F2B7C6'];
+createColorSelector();
+function createColorSelector()
+{
+var colSel = document.getElementById("colorSelection");
+var cv = document.createElement("canvas");
+cv.setAttribute('width', 210);
+cv.setAttribute('height', 25);
+var colors = ['#F6511D', '#FFB400', '#00A6ED', '#7FB800', '#0D2C54', '#F2B7C6'];
+var ctx = cv.getContext("2d");
+for(var i = 0; i < colors.length; i++){
+  ctx.fillStyle = colors[i];
+  ctx.fillRect(i * (cv.width-10)/colors.length + 5, 0, (cv.width-10)/colors.length, cv.height);
+}
+assignInputClickEvent(cv, function(event){
+  var colIndex = Math.floor((event.offsetX/cv.getAttribute('width'))*colors.length);
+  document.getElementById("playerColor").value = colors[colIndex];
   var ctx = cv.getContext("2d");
+  ctx.clearRect(0, 0, cv.width, cv.height);
   for(var i = 0; i < colors.length; i++){
-    ctx.fillStyle = colors[i];
-    ctx.fillRect(i * (cv.width-10)/colors.length + 5, 0, (cv.width-10)/colors.length, cv.height);
+  ctx.fillStyle = colors[i];
+  ctx.fillRect(i * (cv.width-10)/colors.length + 5, 0, (cv.width-10)/colors.length, cv.height);
   }
-  assignInputClickEvent(cv, function(event){
-    var colIndex = Math.floor((event.offsetX/cv.getAttribute('width'))*colors.length);
-    document.getElementById("playerColor").value = colors[colIndex];
-    var ctx = cv.getContext("2d");
-    ctx.clearRect(0, 0, cv.width, cv.height);
-    for(var i = 0; i < colors.length; i++){
-    ctx.fillStyle = colors[i];
-    ctx.fillRect(i * (cv.width-10)/colors.length + 5, 0, (cv.width-10)/colors.length, cv.height);
-    }
-    ctx.lineWidth = 3;
-    ctx.strokeStyle='#000000';
-    ctx.strokeRect(colIndex * (cv.width-10)/colors.length + 5, 0, (cv.width-10)/colors.length, cv.height);
-  });
-  colSel.appendChild(cv);
-  }
+  ctx.lineWidth = 3;
+  ctx.strokeStyle='#000000';
+  ctx.strokeRect(colIndex * (cv.width-10)/colors.length + 5, 0, (cv.width-10)/colors.length, cv.height);
+});
+colSel.appendChild(cv);
+}
 </script>
 --->

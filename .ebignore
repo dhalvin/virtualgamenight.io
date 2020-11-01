@@ -5,7 +5,6 @@ package-lock.json
 *.log
 package-lock.json
 start.sh
-public/images/*
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
